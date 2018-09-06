@@ -44,6 +44,7 @@ const BLESendRateMax = 20;
  */
 const WeDo2Types = {
     MOTOR: 1,
+    TRAIN_MOTOR: 2,
     PIEZO: 22,
     LED: 23,
     TILT: 34,
@@ -640,7 +641,7 @@ class WeDo2 {
         this._ports[connectID - 1] = type;
 
         // Register motor
-        if (type === WeDo2Types.MOTOR) {
+        if (type === WeDo2Types.MOTOR || type === WeDo2Types.TRAIN_MOTOR) {
             this._motors[connectID - 1] = new WeDo2Motor(this, connectID - 1);
         } else {
             // Register tilt or distance sensor
