@@ -191,17 +191,17 @@ class PoweredUpMotor {
     }
 
     /**
-     * @return {int} - this motor's current power level, in the range [0,100].
+     * @return {int} - this motor's current power level, in the range [-100,100].
      */
     get power () {
         return this._power;
     }
 
     /**
-     * @param {int} value - this motor's new power level, in the range [0,100].
+     * @param {int} value - this motor's new power level, in the range [-100,100].
      */
     set power (value) {
-        this._power = Math.max(0, Math.min(value, 100));
+        this._power = Math.max(-100, Math.min(value, 100));
     }
 
     /**
@@ -237,7 +237,7 @@ class PoweredUpMotor {
         cmd[4] = 0x11;
         cmd[5] = 0x51;
         cmd[6] = 0x00;
-        cmd[7] = this._power * this._direction; // power in range 0-100
+        cmd[7] = this._power; // power in range -100 - 100
 
         this._parent._send(UUID.OUTPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd));
 
@@ -707,10 +707,10 @@ class PoweredUp {
  * @enum {string}
  */
 const MotorID = {
-    DEFAULT: 'motor',
-    A: 'motor A',
-    B: 'motor B',
-    ALL: 'all motors'
+    DEFAULT: 'port',
+    A: 'port A',
+    B: 'port B',
+    ALL: 'all ports'
 };
 
 /**
@@ -782,11 +782,11 @@ class Scratch3PoweredUpBlocks {
             showStatusButton: true,
             blocks: [
                 {
-                    opcode: 'motorOnFor',
+                    opcode: 'startMotorPowerFor',
                     text: formatMessage({
-                        id: 'poweredup.motorOnFor',
-                        default: 'turn [MOTOR_ID] on for [DURATION] seconds',
-                        description: 'turn a motor on for some time'
+                        id: 'wedo2.startMotorPowerFor',
+                        default: 'set [MOTOR_ID] power to [POWER] for [DURATION] sec',
+                        description: 'set the motor\'s power and turn it on for some time'
                     }),
                     blockType: BlockType.COMMAND,
                     arguments: {
@@ -795,41 +795,13 @@ class Scratch3PoweredUpBlocks {
                             menu: 'MOTOR_ID',
                             defaultValue: MotorID.DEFAULT
                         },
+                        POWER: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 100
+                        },
                         DURATION: {
                             type: ArgumentType.NUMBER,
                             defaultValue: 1
-                        }
-                    }
-                },
-                {
-                    opcode: 'motorOn',
-                    text: formatMessage({
-                        id: 'poweredup.motorOn',
-                        default: 'turn [MOTOR_ID] on',
-                        description: 'turn a motor on indefinitely'
-                    }),
-                    blockType: BlockType.COMMAND,
-                    arguments: {
-                        MOTOR_ID: {
-                            type: ArgumentType.STRING,
-                            menu: 'MOTOR_ID',
-                            defaultValue: MotorID.DEFAULT
-                        }
-                    }
-                },
-                {
-                    opcode: 'motorOff',
-                    text: formatMessage({
-                        id: 'poweredup.motorOff',
-                        default: 'turn [MOTOR_ID] off',
-                        description: 'turn a motor off'
-                    }),
-                    blockType: BlockType.COMMAND,
-                    arguments: {
-                        MOTOR_ID: {
-                            type: ArgumentType.STRING,
-                            menu: 'MOTOR_ID',
-                            defaultValue: MotorID.DEFAULT
                         }
                     }
                 },
@@ -854,11 +826,11 @@ class Scratch3PoweredUpBlocks {
                     }
                 },
                 {
-                    opcode: 'setMotorDirection',
+                    opcode: 'motorOff',
                     text: formatMessage({
-                        id: 'poweredup.setMotorDirection',
-                        default: 'set [MOTOR_ID] direction to [MOTOR_DIRECTION]',
-                        description: 'set the motor\'s turn direction'
+                        id: 'poweredup.motorOff',
+                        default: 'turn [MOTOR_ID] off',
+                        description: 'turn a motor off'
                     }),
                     blockType: BlockType.COMMAND,
                     arguments: {
@@ -866,11 +838,6 @@ class Scratch3PoweredUpBlocks {
                             type: ArgumentType.STRING,
                             menu: 'MOTOR_ID',
                             defaultValue: MotorID.DEFAULT
-                        },
-                        MOTOR_DIRECTION: {
-                            type: ArgumentType.STRING,
-                            menu: 'MOTOR_DIRECTION',
-                            defaultValue: MotorDirection.FORWARD
                         }
                     }
                 }
@@ -900,6 +867,23 @@ class Scratch3PoweredUpBlocks {
             this._forEachMotor(args.MOTOR_ID, motorIndex => {
                 const motor = this._device.motor(motorIndex);
                 if (motor) {
+                    motor.setMotorOnFor(durationMS);
+                }
+            });
+
+            // Ensure this block runs for a fixed amount of time even when no device is connected.
+            setTimeout(resolve, durationMS);
+        });
+    }
+
+    startMotorPowerFor (args) {
+        let durationMS = Cast.toNumber(args.DURATION) * 1000;
+        durationMS = MathUtil.clamp(durationMS, 0, 15000);
+        return new Promise(resolve => {
+            this._forEachMotor(args.MOTOR_ID, motorIndex => {
+                const motor = this._device.motor(motorIndex);
+                if (motor) {
+                    motor.power = MathUtil.clamp(Cast.toNumber(args.POWER), -100, 100);
                     motor.setMotorOnFor(durationMS);
                 }
             });
@@ -962,7 +946,7 @@ class Scratch3PoweredUpBlocks {
         this._forEachMotor(args.MOTOR_ID, motorIndex => {
             const motor = this._device.motor(motorIndex);
             if (motor) {
-                motor.power = MathUtil.clamp(Cast.toNumber(args.POWER), 0, 100);
+                motor.power = MathUtil.clamp(Cast.toNumber(args.POWER), -100, 100);
                 motor.setMotorOn();
             }
         });
