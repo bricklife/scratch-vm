@@ -45,6 +45,7 @@ const BLESendRateMax = 20;
 const PoweredUpTypes = {
     MOTOR: 1,
     TRAIN_MOTOR: 2,
+    LED_LIGHT: 8,
     PIEZO: 22,
     LED: 23,
     TILT: 34,
@@ -228,11 +229,15 @@ class PoweredUpMotor {
      * Turn this motor on indefinitely.
      */
     setMotorOn () {
-        const cmd = new Uint8Array(4);
-        cmd[0] = this._index + 1; // connect id
-        cmd[1] = PoweredUpCommands.MOTOR_POWER; // command
-        cmd[2] = 1; // 1 byte to follow
-        cmd[3] = this._power * this._direction; // power in range 0-100
+        const cmd = new Uint8Array(8);
+        cmd[0] = 0x08;
+        cmd[1] = 0x00;
+        cmd[2] = 0x81;
+        cmd[3] = this._index; // connect id
+        cmd[4] = 0x11;
+        cmd[5] = 0x51;
+        cmd[6] = 0x00;
+        cmd[7] = this._power * this._direction; // power in range 0-100
 
         this._parent._send(UUID.OUTPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd));
 
@@ -254,11 +259,15 @@ class PoweredUpMotor {
      * Start active braking on this motor. After a short time, the motor will turn off.
      */
     startBraking () {
-        const cmd = new Uint8Array(4);
-        cmd[0] = this._index + 1; // connect id
-        cmd[1] = PoweredUpCommands.MOTOR_POWER; // command
-        cmd[2] = 1; // 1 byte to follow
-        cmd[3] = 127; // power in range 0-100
+        const cmd = new Uint8Array(8);
+        cmd[0] = 0x08;
+        cmd[1] = 0x00;
+        cmd[2] = 0x81;
+        cmd[3] = this._index; // connect id
+        cmd[4] = 0x11;
+        cmd[5] = 0x51;
+        cmd[6] = 0x00;
+        cmd[7] = 0x7f; // power
 
         this._parent._send(UUID.OUTPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd));
 
@@ -271,11 +280,15 @@ class PoweredUpMotor {
      * @param {boolean} [useLimiter=true] - if true, use the rate limiter
      */
     setMotorOff (useLimiter = true) {
-        const cmd = new Uint8Array(4);
-        cmd[0] = this._index + 1; // connect id
-        cmd[1] = PoweredUpCommands.MOTOR_POWER; // command
-        cmd[2] = 1; // 1 byte to follow
-        cmd[3] = 0; // power in range 0-100
+        const cmd = new Uint8Array(8);
+        cmd[0] = 0x08;
+        cmd[1] = 0x00;
+        cmd[2] = 0x81;
+        cmd[3] = this._index; // connect id
+        cmd[4] = 0x11;
+        cmd[5] = 0x51;
+        cmd[6] = 0x00;
+        cmd[7] = 0x00; // power
 
         this._parent._send(UUID.OUTPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd), useLimiter);
 
@@ -335,7 +348,7 @@ class PoweredUp {
          * @type {string[]}
          * @private
          */
-        this._ports = ['none', 'none']; // TODO: rename?
+        this._ports = {}; // TODO: rename?
 
         /**
          * The motors which this WeDo 2.0 could possibly have.
@@ -509,7 +522,7 @@ class PoweredUp {
      */
     // TODO: rename disconnect?
     disconnectSession () {
-        this._ports = ['none', 'none'];
+        this._ports = {};
         this._motors = [null, null];
         this._sensors = {
             tiltX: 0,
@@ -568,29 +581,22 @@ class PoweredUp {
         const data = Base64Util.base64ToUint8Array(base64);
         // log.info(data);
 
-        /**
-         * If first byte of data is '1' or '2', then either clear the
-         * sensor present in ports 1 or 2 or set their format.
-         *
-         * If first byte of data is anything else, read incoming sensor value.
-         */
-        switch (data[0]) {
-        case 1:
-        case 2: {
-            const connectID = data[0];
-            if (data[1] === 0) {
+        switch (data[2]) {
+        case 0x04: {
+            const connectID = data[3];
+            if (data[4] === 0) {
                 // clear sensor or motor
                 this._clearPort(connectID);
             } else {
                 // register sensor or motor
-                this._registerSensorOrMotor(connectID, data[3]);
+                this._registerSensorOrMotor(connectID, data[5]);
             }
             break;
         }
-        default: {
+        case 0x45: {
             // read incoming sensor value
             const connectID = data[1];
-            const type = this._ports[connectID - 1];
+            const type = this._ports[connectID];
             if (type === PoweredUpTypes.DISTANCE) {
                 this._sensors.distance = data[2];
             }
@@ -598,6 +604,9 @@ class PoweredUp {
                 this._sensors.tiltX = data[2];
                 this._sensors.tiltY = data[3];
             }
+            break;
+        }
+        default: {
             break;
         }
         }
@@ -609,15 +618,15 @@ class PoweredUp {
      * @private
      */
     _clearPort (connectID) {
-        const type = this._ports[connectID - 1];
+        const type = this._ports[connectID];
         if (type === PoweredUpTypes.TILT) {
             this._sensors.tiltX = this._sensors.tiltY = 0;
         }
         if (type === PoweredUpTypes.DISTANCE) {
             this._sensors.distance = 0;
         }
-        this._ports[connectID - 1] = 'none';
-        this._motors[connectID - 1] = null;
+        delete this._ports[connectID];
+        this._motors[connectID] = null;
     }
 
     /**
@@ -629,12 +638,13 @@ class PoweredUp {
      */
     _registerSensorOrMotor (connectID, type) {
         // Record which port is connected to what type of device
-        this._ports[connectID - 1] = type;
+        this._ports[connectID] = type;
 
         // Register motor
-        if (type === PoweredUpTypes.MOTOR || type === PoweredUpTypes.TRAIN_MOTOR) {
-            this._motors[connectID - 1] = new PoweredUpMotor(this, connectID - 1);
+        if (type === PoweredUpTypes.MOTOR || type === PoweredUpTypes.TRAIN_MOTOR || type === PoweredUpTypes.LED_LIGHT) {
+            this._motors[connectID] = new PoweredUpMotor(this, connectID);
         } else {
+            return;
             // Register tilt or distance sensor
             const typeString = type === PoweredUpTypes.DISTANCE ? 'DISTANCE' : 'TILT';
             const cmd = new Uint8Array(11);
@@ -861,119 +871,6 @@ class Scratch3PoweredUpBlocks {
                             type: ArgumentType.STRING,
                             menu: 'MOTOR_DIRECTION',
                             defaultValue: MotorDirection.FORWARD
-                        }
-                    }
-                },
-                {
-                    opcode: 'setLightHue',
-                    text: formatMessage({
-                        id: 'poweredup.setLightHue',
-                        default: 'set light color to [HUE]',
-                        description: 'set the LED color'
-                    }),
-                    blockType: BlockType.COMMAND,
-                    arguments: {
-                        HUE: {
-                            type: ArgumentType.NUMBER,
-                            defaultValue: 50
-                        }
-                    }
-                },
-                {
-                    opcode: 'playNoteFor',
-                    text: formatMessage({
-                        id: 'poweredup.playNoteFor',
-                        default: 'play note [NOTE] for [DURATION] seconds',
-                        description: 'play a certain note for some time'
-                    }),
-                    blockType: BlockType.COMMAND,
-                    arguments: {
-                        NOTE: {
-                            type: ArgumentType.NUMBER, // TODO: ArgumentType.MIDI_NOTE?
-                            defaultValue: 60
-                        },
-                        DURATION: {
-                            type: ArgumentType.NUMBER,
-                            defaultValue: 0.5
-                        }
-                    },
-                    hideFromPalette: true
-                },
-                {
-                    opcode: 'whenDistance',
-                    text: formatMessage({
-                        id: 'poweredup.whenDistance',
-                        default: 'when distance [OP] [REFERENCE]',
-                        description: 'check for when distance is < or > than reference'
-                    }),
-                    blockType: BlockType.HAT,
-                    arguments: {
-                        OP: {
-                            type: ArgumentType.STRING,
-                            menu: 'OP',
-                            defaultValue: '<'
-                        },
-                        REFERENCE: {
-                            type: ArgumentType.NUMBER,
-                            defaultValue: 50
-                        }
-                    }
-                },
-                {
-                    opcode: 'whenTilted',
-                    text: formatMessage({
-                        id: 'poweredup.whenTilted',
-                        default: 'when tilted [TILT_DIRECTION_ANY]',
-                        description: 'check when tilted in a certain direction'
-                    }),
-                    func: 'isTilted',
-                    blockType: BlockType.HAT,
-                    arguments: {
-                        TILT_DIRECTION_ANY: {
-                            type: ArgumentType.STRING,
-                            menu: 'TILT_DIRECTION_ANY',
-                            defaultValue: TiltDirection.ANY
-                        }
-                    }
-                },
-                {
-                    opcode: 'getDistance',
-                    text: formatMessage({
-                        id: 'poweredup.getDistance',
-                        default: 'distance',
-                        description: 'the value returned by the distance sensor'
-                    }),
-                    blockType: BlockType.REPORTER
-                },
-                {
-                    opcode: 'isTilted',
-                    text: formatMessage({
-                        id: 'poweredup.isTilted',
-                        default: 'tilted [TILT_DIRECTION_ANY]?',
-                        description: 'whether the tilt sensor is tilted'
-                    }),
-                    blockType: BlockType.BOOLEAN,
-                    arguments: {
-                        TILT_DIRECTION_ANY: {
-                            type: ArgumentType.STRING,
-                            menu: 'TILT_DIRECTION_ANY',
-                            defaultValue: TiltDirection.ANY
-                        }
-                    }
-                },
-                {
-                    opcode: 'getTiltAngle',
-                    text: formatMessage({
-                        id: 'poweredup.getTiltAngle',
-                        default: 'tilt angle [TILT_DIRECTION]',
-                        description: 'the angle returned by the tilt sensor'
-                    }),
-                    blockType: BlockType.REPORTER,
-                    arguments: {
-                        TILT_DIRECTION: {
-                            type: ArgumentType.STRING,
-                            menu: 'TILT_DIRECTION',
-                            defaultValue: TiltDirection.UP
                         }
                     }
                 }
