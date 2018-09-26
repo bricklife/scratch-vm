@@ -20,12 +20,6 @@ const SERVER_HOST = 'https://synthesis-service.scratch.mit.edu';
 const SERVER_TIMEOUT = 10000; // 10 seconds
 
 /**
- * Volume for playback of speech sounds, as a percentage.
- * @type {number}
- */
-const SPEECH_VOLUME = 250;
-
-/**
  * An id for one of the voices.
  */
 const QUINN_ID = 'QUINN';
@@ -43,7 +37,7 @@ const SQUEAK_ID = 'SQUEAK';
 /**
  * An id for one of the voices.
  */
-const GIANT_ID = 'GIANT';
+const MONSTER_ID = 'MONSTER';
 
 /**
  * An id for one of the voices.
@@ -51,10 +45,15 @@ const GIANT_ID = 'GIANT';
 const KITTEN_ID = 'KITTEN';
 
 /**
+ * An id for one of the voices.
+ */
+const PUPPY_ID = 'PUPPY';
+
+/**
  * Class for the text2speech blocks.
  * @constructor
  */
-class Scratch3Text2SpeechBlocks {
+class Scratch3SpeakBlocks {
     constructor (runtime) {
         /**
          * The runtime instantiating this block package.
@@ -62,22 +61,12 @@ class Scratch3Text2SpeechBlocks {
          */
         this.runtime = runtime;
 
-        /**
-         * The current language code to use for speech synthesis.
-         * @type {string}
-         */
-        this.currentLanguage = 'en-US';
-
-        /**
-         * Map of soundPlayers by sound id.
-         * @type {Map<string, SoundPlayer>}
-         */
-        this._soundPlayers = new Map();
-
-        this._stopAllSpeech = this._stopAllSpeech.bind(this);
-        if (this.runtime) {
-            this.runtime.on('PROJECT_STOP_ALL', this._stopAllSpeech);
-        }
+        // @todo stop all speech sounds currently playing
+        // https://github.com/LLK/scratch-vm/issues/1405
+        // this._stopAllSpeech = this._stopAllSpeech.bind(this);
+        // if (this.runtime) {
+        //      this.runtime.on('PROJECT_STOP_ALL', this._stopAllSpeech);
+        // }
 
         this._onTargetCreated = this._onTargetCreated.bind(this);
         if (this.runtime) {
@@ -117,14 +106,14 @@ class Scratch3Text2SpeechBlocks {
                 gender: 'female',
                 playbackRate: 1.4
             },
-            [GIANT_ID]: {
+            [MONSTER_ID]: {
                 name: formatMessage({
-                    id: 'text2speech.giant',
-                    default: 'giant',
+                    id: 'text2speech.monster',
+                    default: 'monster',
                     description: 'Name for a funny voice with a low pitch.'
                 }),
                 gender: 'male',
-                playbackRate: 0.84
+                playbackRate: 0.7
             },
             [KITTEN_ID]: {
                 name: formatMessage({
@@ -134,29 +123,16 @@ class Scratch3Text2SpeechBlocks {
                 }),
                 gender: 'female',
                 playbackRate: 1.4
+            },
+            [PUPPY_ID]: {
+                name: formatMessage({
+                    id: 'text2speech.puppy',
+                    default: 'puppy',
+                    description: 'A baby dog.'
+                }),
+                gender: 'male',
+                playbackRate: 1.4
             }
-        };
-    }
-
-    /**
-     * An object with language names mapped to their language codes.
-     */
-    get LANGUAGE_INFO () {
-        return {
-            'Danish': 'da-DK',
-            'Dutch': 'nl-NL',
-            'English': 'en-US',
-            'French': 'fr-FR',
-            'German': 'de-DE',
-            'Icelandic': 'is-IS',
-            'Italian': 'it-IT',
-            'Japanese': 'ja-JP',
-            'Polish': 'pl-PL',
-            'Portuguese (Brazilian)': 'pt-BR',
-            'Portuguese (European)': 'pt-PT',
-            'Russian': 'ru-RU',
-            'Spanish (European)': 'es-ES',
-            'Spanish (Latin American)': 'es-US'
         };
     }
 
@@ -184,10 +160,10 @@ class Scratch3Text2SpeechBlocks {
      * @private
      */
     _getState (target) {
-        let state = target.getCustomState(Scratch3Text2SpeechBlocks.STATE_KEY);
+        let state = target.getCustomState(Scratch3SpeakBlocks.STATE_KEY);
         if (!state) {
-            state = Clone.simple(Scratch3Text2SpeechBlocks.DEFAULT_TEXT2SPEECH_STATE);
-            target.setCustomState(Scratch3Text2SpeechBlocks.STATE_KEY, state);
+            state = Clone.simple(Scratch3SpeakBlocks.DEFAULT_TEXT2SPEECH_STATE);
+            target.setCustomState(Scratch3SpeakBlocks.STATE_KEY, state);
         }
         return state;
     }
@@ -201,9 +177,9 @@ class Scratch3Text2SpeechBlocks {
      */
     _onTargetCreated (newTarget, sourceTarget) {
         if (sourceTarget) {
-            const state = sourceTarget.getCustomState(Scratch3Text2SpeechBlocks.STATE_KEY);
+            const state = sourceTarget.getCustomState(Scratch3SpeakBlocks.STATE_KEY);
             if (state) {
-                newTarget.setCustomState(Scratch3Text2SpeechBlocks.STATE_KEY, Clone.simple(state));
+                newTarget.setCustomState(Scratch3SpeakBlocks.STATE_KEY, Clone.simple(state));
             }
         }
     }
@@ -214,7 +190,7 @@ class Scratch3Text2SpeechBlocks {
     getInfo () {
         return {
             id: 'text2speech',
-            name: 'Text to Speech',
+            name: 'Text-to-Speech',
             menuIconURI: '', // @todo Add the final icons.
             blockIconURI: '',
             blocks: [
@@ -252,27 +228,10 @@ class Scratch3Text2SpeechBlocks {
                             defaultValue: QUINN_ID
                         }
                     }
-                },
-                {
-                    opcode: 'setLanguage',
-                    text: formatMessage({
-                        id: 'text2speech.setLanguageBlock',
-                        default: 'set language to [LANGUAGE]',
-                        description: 'Set the language for speech synthesis.'
-                    }),
-                    blockType: BlockType.COMMAND,
-                    arguments: {
-                        LANGUAGE: {
-                            type: ArgumentType.STRING,
-                            menu: 'languages',
-                            defaultValue: this.currentLanguage
-                        }
-                    }
                 }
             ],
             menus: {
-                voices: this.getVoiceMenu(),
-                languages: this.getLanguageMenu()
+                voices: this.getVoiceMenu()
             }
         };
     }
@@ -306,17 +265,6 @@ class Scratch3Text2SpeechBlocks {
     }
 
     /**
-     * Get the menu of languages for the "set language" block.
-     * @return {array} the text and value for each menu item.
-     */
-    getLanguageMenu () {
-        return Object.keys(this.LANGUAGE_INFO).map(languageName => ({
-            text: languageName,
-            value: this.LANGUAGE_INFO[languageName]
-        }));
-    }
-
-    /**
      * Set the voice for speech synthesis for this sprite.
      * @param  {object} args Block arguments
      * @param {object} util Utility object provided by the runtime.
@@ -328,26 +276,6 @@ class Scratch3Text2SpeechBlocks {
         if (Object.keys(this.VOICE_INFO).includes(args.VOICE)) {
             state.voiceId = args.VOICE;
         }
-    }
-
-    /**
-     * Set the language for speech synthesis.
-     * @param  {object} args Block arguments
-     */
-    setLanguage (args) {
-        // Only set the language if the arg is a valid language code.
-        if (Object.values(this.LANGUAGE_INFO).includes(args.LANGUAGE)) {
-            this.currentLanguage = args.LANGUAGE;
-        }
-    }
-
-    /**
-     * Stop all currently playing speech sounds.
-     */
-    _stopAllSpeech () {
-        this._soundPlayers.forEach(player => {
-            player.stop();
-        });
     }
 
     /**
@@ -365,16 +293,26 @@ class Scratch3Text2SpeechBlocks {
         const gender = this.VOICE_INFO[state.voiceId].gender;
         const playbackRate = this.VOICE_INFO[state.voiceId].playbackRate;
 
+        let locale = this.getViewerLanguageCode();
+
         // @todo localize this?
         if (state.voiceId === KITTEN_ID) {
             words = words.replace(/\w+/g, 'meow');
         }
 
+        // @todo localize this?
+        if (state.voiceId === PUPPY_ID) {
+            words = words.replace(/\w+/g, 'bark');
+            words = words.split(' ').map(() => ['bark', 'woof', 'ruff'][Math.floor(Math.random() * 3)])
+                .join(' ');
+            locale = 'en-GB';
+        }
+
         // Build up URL
         let path = `${SERVER_HOST}/synth`;
-        path += `?locale=${this.currentLanguage}`;
+        path += `?locale=${locale}`;
         path += `&gender=${gender}`;
-        path += `&text=${encodeURI(words.substring(0, 128))}`;
+        path += `&text=${encodeURI(words)}`;
 
         // Perform HTTP request to get audio file
         return new Promise(resolve => {
@@ -399,24 +337,13 @@ class Scratch3Text2SpeechBlocks {
                     }
                 };
                 this.runtime.audioEngine.decodeSoundPlayer(sound).then(soundPlayer => {
-                    this._soundPlayers.set(soundPlayer.id, soundPlayer);
-
+                    soundPlayer.connect(this.runtime.audioEngine);
                     soundPlayer.setPlaybackRate(playbackRate);
-
-                    // Increase the volume
-                    const engine = this.runtime.audioEngine;
-                    const chain = engine.createEffectChain();
-                    chain.set('volume', SPEECH_VOLUME);
-                    soundPlayer.connect(chain);
-
                     soundPlayer.play();
-                    soundPlayer.on('stop', () => {
-                        this._soundPlayers.delete(soundPlayer.id);
-                        resolve();
-                    });
+                    soundPlayer.on('stop', resolve);
                 });
             });
         });
     }
 }
-module.exports = Scratch3Text2SpeechBlocks;
+module.exports = Scratch3SpeakBlocks;

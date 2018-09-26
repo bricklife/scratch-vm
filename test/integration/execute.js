@@ -31,14 +31,7 @@ const whenThreadsComplete = (t, vm, timeLimit = 2000) => (
     // When the number of threads reaches 0 the test is expected to be complete.
     new Promise((resolve, reject) => {
         const intervalId = setInterval(() => {
-            let active = 0;
-            const threads = vm.runtime.threads;
-            for (let i = 0; i < threads.length; i++) {
-                if (!threads[i].updateMonitor) {
-                    active += 1;
-                }
-            }
-            if (active === 0) {
+            if (vm.runtime.threads.length === 0) {
                 resolve();
             }
         }, 50);

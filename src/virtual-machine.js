@@ -105,21 +105,19 @@ class VirtualMachine extends EventEmitter {
         this.runtime.on(Runtime.BLOCKSINFO_UPDATE, blocksInfo => {
             this.emit(Runtime.BLOCKSINFO_UPDATE, blocksInfo);
         });
+
         this.runtime.on(Runtime.PERIPHERAL_LIST_UPDATE, info => {
             this.emit(Runtime.PERIPHERAL_LIST_UPDATE, info);
         });
         this.runtime.on(Runtime.PERIPHERAL_CONNECTED, () =>
             this.emit(Runtime.PERIPHERAL_CONNECTED)
         );
-        this.runtime.on(Runtime.PERIPHERAL_ERROR, data =>
-            this.emit(Runtime.PERIPHERAL_ERROR, data)
+        this.runtime.on(Runtime.PERIPHERAL_ERROR, () =>
+            this.emit(Runtime.PERIPHERAL_ERROR)
         );
         this.runtime.on(Runtime.PERIPHERAL_SCAN_TIMEOUT, () =>
             this.emit(Runtime.PERIPHERAL_SCAN_TIMEOUT)
         );
-        this.runtime.on(Runtime.MIC_LISTENING, listening => {
-            this.emit(Runtime.MIC_LISTENING, listening);
-        });
 
         this.extensionManager = new ExtensionManager(this.runtime);
 
@@ -215,36 +213,18 @@ class VirtualMachine extends EventEmitter {
         this.runtime.ioDevices.video.setProvider(videoProvider);
     }
 
-    /**
-     * Tell the specified extension to scan for a peripheral.
-     * @param {string} extensionId - the id of the extension.
-     */
-    scanForPeripheral (extensionId) {
-        this.runtime.scanForPeripheral(extensionId);
+    startDeviceScan (extensionId) {
+        this.runtime.startDeviceScan(extensionId);
     }
 
-    /**
-     * Connect to the extension's specified peripheral.
-     * @param {string} extensionId - the id of the extension.
-     * @param {number} peripheralId - the id of the peripheral.
-     */
-    connectPeripheral (extensionId, peripheralId) {
-        this.runtime.connectPeripheral(extensionId, peripheralId);
+    connectToPeripheral (extensionId, peripheralId) {
+        this.runtime.connectToPeripheral(extensionId, peripheralId);
     }
 
-    /**
-     * Disconnect from the extension's connected peripheral.
-     * @param {string} extensionId - the id of the extension.
-     */
-    disconnectPeripheral (extensionId) {
-        this.runtime.disconnectPeripheral(extensionId);
+    disconnectExtensionSession (extensionId) {
+        this.runtime.disconnectExtensionSession(extensionId);
     }
 
-    /**
-     * Returns whether the extension has a currently connected peripheral.
-     * @param {string} extensionId - the id of the extension.
-     * @return {boolean} - whether the extension has a connected peripheral.
-     */
     getPeripheralIsConnected (extensionId) {
         return this.runtime.getPeripheralIsConnected(extensionId);
     }
@@ -959,13 +939,6 @@ class VirtualMachine extends EventEmitter {
      */
     attachRenderer (renderer) {
         this.runtime.attachRenderer(renderer);
-    }
-
-    /**
-     * @returns {RenderWebGL} The renderer attached to the vm
-     */
-    get renderer () {
-        return this.runtime && this.runtime.renderer;
     }
 
     /**

@@ -1,23 +1,22 @@
 const JSONRPCWebSocket = require('../util/jsonrpc-web-socket');
-const ScratchLinkWebSocket = 'wss://device-manager.scratch.mit.edu:20110/scratch/ble';
 // const log = require('../util/log');
+const ScratchLinkWebSocket = 'wss://device-manager.scratch.mit.edu:20110/scratch/ble';
 
-class BLE extends JSONRPCWebSocket {
+class BLESession extends JSONRPCWebSocket {
 
     /**
-     * A BLE peripheral socket object.  It handles connecting, over web sockets, to
-     * BLE peripherals, and reading and writing data to them.
+     * A BLE device session object.  It handles connecting, over web sockets, to
+     * BLE devices, and reading and writing data to them.
      * @param {Runtime} runtime - the Runtime for sending/receiving GUI update events.
-     * @param {string} extensionId - the id of the extension using this socket.
-     * @param {object} peripheralOptions - the list of options for peripheral discovery.
+     * @param {object} deviceOptions - the list of options for device discovery.
      * @param {object} connectCallback - a callback for connection.
      */
-    constructor (runtime, extensionId, peripheralOptions, connectCallback) {
+    constructor (runtime, deviceOptions, connectCallback) {
         const ws = new WebSocket(ScratchLinkWebSocket);
         super(ws);
 
         this._ws = ws;
-        this._ws.onopen = this.requestPeripheral.bind(this); // only call request peripheral after socket opens
+        this._ws.onopen = this.requestDevice.bind(this); // only call request device after socket opens
         this._ws.onerror = this._sendError.bind(this, 'ws onerror');
         this._ws.onclose = this._sendError.bind(this, 'ws onclose');
 
@@ -25,24 +24,21 @@ class BLE extends JSONRPCWebSocket {
         this._connectCallback = connectCallback;
         this._connected = false;
         this._characteristicDidChangeCallback = null;
-        this._extensionId = extensionId;
-        this._peripheralOptions = peripheralOptions;
+        this._deviceOptions = deviceOptions;
         this._discoverTimeoutID = null;
         this._runtime = runtime;
     }
 
     /**
-     * Request connection to the peripheral.
+     * Request connection to the device.
      * If the web socket is not yet open, request when the socket promise resolves.
      */
-    requestPeripheral () {
+    requestDevice () {
         if (this._ws.readyState === 1) { // is this needed since it's only called on ws.onopen?
             this._availablePeripherals = {};
             this._discoverTimeoutID = window.setTimeout(this._sendDiscoverTimeout.bind(this), 15000);
-            this.sendRemoteRequest('discover', this._peripheralOptions)
-                .catch(e => {
-                    this._sendError(e);
-                }); // never reached?
+            this.sendRemoteRequest('discover', this._deviceOptions)
+                .catch(e => this._sendError(e)); // never reached?
         }
         // TODO: else?
     }
@@ -52,7 +48,7 @@ class BLE extends JSONRPCWebSocket {
      * callback if connection is successful.
      * @param {number} id - the id of the peripheral to connect to
      */
-    connectPeripheral (id) {
+    connectDevice (id) {
         this.sendRemoteRequest('connect', {peripheralId: id})
             .then(() => {
                 this._connected = true;
@@ -67,7 +63,7 @@ class BLE extends JSONRPCWebSocket {
     /**
      * Close the websocket.
      */
-    disconnect () {
+    disconnectSession () {
         this._ws.close();
         this._connected = false;
     }
@@ -75,8 +71,35 @@ class BLE extends JSONRPCWebSocket {
     /**
      * @return {bool} whether the peripheral is connected.
      */
-    isConnected () {
+    getPeripheralIsConnected () {
         return this._connected;
+    }
+
+    /**
+     * Handle a received call from the socket.
+     * @param {string} method - a received method label.
+     * @param {object} params - a received list of parameters.
+     * @return {object} - optional return value.
+     */
+    didReceiveCall (method, params) {
+        switch (method) {
+        case 'didDiscoverPeripheral':
+            this._availablePeripherals[params.peripheralId] = params;
+            this._runtime.emit(
+                this._runtime.constructor.PERIPHERAL_LIST_UPDATE,
+                this._availablePeripherals
+            );
+            if (this._discoverTimeoutID) {
+                // TODO: window?
+                window.clearTimeout(this._discoverTimeoutID);
+            }
+            break;
+        case 'characteristicDidChange':
+            this._characteristicDidChangeCallback(params.message);
+            break;
+        case 'ping':
+            return 42;
+        }
     }
 
     /**
@@ -144,40 +167,10 @@ class BLE extends JSONRPCWebSocket {
             });
     }
 
-    /**
-     * Handle a received call from the socket.
-     * @param {string} method - a received method label.
-     * @param {object} params - a received list of parameters.
-     * @return {object} - optional return value.
-     */
-    didReceiveCall (method, params) {
-        switch (method) {
-        case 'didDiscoverPeripheral':
-            this._availablePeripherals[params.peripheralId] = params;
-            this._runtime.emit(
-                this._runtime.constructor.PERIPHERAL_LIST_UPDATE,
-                this._availablePeripherals
-            );
-            if (this._discoverTimeoutID) {
-                // TODO: window?
-                window.clearTimeout(this._discoverTimeoutID);
-            }
-            break;
-        case 'characteristicDidChange':
-            this._characteristicDidChangeCallback(params.message);
-            break;
-        case 'ping':
-            return 42;
-        }
-    }
-
     _sendError (/* e */) {
-        this.disconnect();
-        // log.error(`BLE error: ${JSON.stringify(e)}`);
-        this._runtime.emit(this._runtime.constructor.PERIPHERAL_ERROR, {
-            message: `Scratch lost connection to`,
-            extensionId: this._extensionId
-        });
+        this.disconnectSession();
+        // log.error(`BLESession error: ${JSON.stringify(e)}`);
+        this._runtime.emit(this._runtime.constructor.PERIPHERAL_ERROR);
     }
 
     _sendDiscoverTimeout () {
@@ -185,4 +178,4 @@ class BLE extends JSONRPCWebSocket {
     }
 }
 
-module.exports = BLE;
+module.exports = BLESession;
