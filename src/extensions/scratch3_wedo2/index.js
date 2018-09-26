@@ -45,6 +45,7 @@ const BLESendRateMax = 20;
 const WeDo2Types = {
     MOTOR: 1,
     TRAIN_MOTOR: 2,
+    LED_LIGHT: 8,
     PIEZO: 22,
     LED: 23,
     TILT: 34,
@@ -641,7 +642,7 @@ class WeDo2 {
         this._ports[connectID - 1] = type;
 
         // Register motor
-        if (type === WeDo2Types.MOTOR || type === WeDo2Types.TRAIN_MOTOR) {
+        if (type === WeDo2Types.MOTOR || type === WeDo2Types.TRAIN_MOTOR || type === WeDo2Types.LED_LIGHT) {
             this._motors[connectID - 1] = new WeDo2Motor(this, connectID - 1);
         } else {
             // Register tilt or distance sensor
@@ -849,6 +850,30 @@ class Scratch3WeDo2Blocks {
                         POWER: {
                             type: ArgumentType.NUMBER,
                             defaultValue: 100
+                        }
+                    }
+                },
+                {
+                    opcode: 'startMotorPowerFor',
+                    text: formatMessage({
+                        id: 'wedo2.startMotorPowerFor',
+                        default: 'set [MOTOR_ID] power to [POWER] for [DURATION] seconds',
+                        description: 'set the motor\'s power and turn it on for some time'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        MOTOR_ID: {
+                            type: ArgumentType.STRING,
+                            menu: 'MOTOR_ID',
+                            defaultValue: MotorID.DEFAULT
+                        },
+                        POWER: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 100
+                        },
+                        DURATION: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 1
                         }
                     }
                 },
@@ -1083,6 +1108,23 @@ class Scratch3WeDo2Blocks {
             window.setTimeout(() => {
                 resolve();
             }, BLESendInterval);
+        });
+    }
+
+    startMotorPowerFor (args) {
+        let durationMS = Cast.toNumber(args.DURATION) * 1000;
+        durationMS = MathUtil.clamp(durationMS, 0, 15000);
+        return new Promise(resolve => {
+            this._forEachMotor(args.MOTOR_ID, motorIndex => {
+                const motor = this._device.motor(motorIndex);
+                if (motor) {
+                    motor.power = MathUtil.clamp(Cast.toNumber(args.POWER), 0, 100);
+                    motor.setMotorOnFor(durationMS);
+                }
+            });
+
+            // Ensure this block runs for a fixed amount of time even when no device is connected.
+            setTimeout(resolve, durationMS);
         });
     }
 
