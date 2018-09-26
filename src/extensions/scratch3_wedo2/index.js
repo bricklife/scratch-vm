@@ -854,6 +854,30 @@ class Scratch3WeDo2Blocks {
                     }
                 },
                 {
+                    opcode: 'startMotorPowerFor',
+                    text: formatMessage({
+                        id: 'wedo2.startMotorPowerFor',
+                        default: 'set [MOTOR_ID] power to [POWER] for [DURATION] seconds',
+                        description: 'set the motor\'s power and turn it on for some time'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        MOTOR_ID: {
+                            type: ArgumentType.STRING,
+                            menu: 'MOTOR_ID',
+                            defaultValue: MotorID.DEFAULT
+                        },
+                        POWER: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 100
+                        },
+                        DURATION: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 1
+                        }
+                    }
+                },
+                {
                     opcode: 'setMotorDirection',
                     text: formatMessage({
                         id: 'wedo2.setMotorDirection',
@@ -1084,6 +1108,23 @@ class Scratch3WeDo2Blocks {
             window.setTimeout(() => {
                 resolve();
             }, BLESendInterval);
+        });
+    }
+
+    startMotorPowerFor (args) {
+        let durationMS = Cast.toNumber(args.DURATION) * 1000;
+        durationMS = MathUtil.clamp(durationMS, 0, 15000);
+        return new Promise(resolve => {
+            this._forEachMotor(args.MOTOR_ID, motorIndex => {
+                const motor = this._device.motor(motorIndex);
+                if (motor) {
+                    motor.power = MathUtil.clamp(Cast.toNumber(args.POWER), 0, 100);
+                    motor.setMotorOnFor(durationMS);
+                }
+            });
+
+            // Ensure this block runs for a fixed amount of time even when no device is connected.
+            setTimeout(resolve, durationMS);
         });
     }
 
