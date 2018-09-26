@@ -264,7 +264,10 @@ class Runtime extends EventEmitter {
             video: new Video(this)
         };
 
-        this.extensionDevices = {};
+        /**
+         * A list of extensions, used to manage hardware connection.
+         */
+        this.peripheralExtensions = {};
 
         /**
          * A runtime profiler that records timed events for later playback to
@@ -452,6 +455,14 @@ class Runtime extends EventEmitter {
      */
     static get PERIPHERAL_SCAN_TIMEOUT () {
         return 'PERIPHERAL_SCAN_TIMEOUT';
+    }
+
+    /**
+     * Event name to indicate that the microphone is being used to stream audio.
+     * @const {string}
+     */
+    static get MIC_LISTENING () {
+        return 'MIC_LISTENING';
     }
 
     /**
@@ -802,8 +813,12 @@ class Runtime extends EventEmitter {
             }
         }
 
-        // Add icon to the bottom right of a loop block
-        if (blockInfo.blockType === BlockType.LOOP) {
+        if (blockInfo.blockType === BlockType.REPORTER) {
+            if (!blockInfo.disableMonitor && context.inputList.length === 0) {
+                blockJSON.checkboxInFlyout = true;
+            }
+        } else if (blockInfo.blockType === BlockType.LOOP) {
+            // Add icon to the bottom right of a loop block
             blockJSON[`lastDummyAlign${outLineNum}`] = 'RIGHT';
             blockJSON[`message${outLineNum}`] = '%1';
             blockJSON[`args${outLineNum}`] = [{
@@ -928,34 +943,66 @@ class Runtime extends EventEmitter {
             (result, categoryInfo) => result.concat(categoryInfo.blocks.map(blockInfo => blockInfo.json)), []);
     }
 
-    registerExtensionDevice (extensionId, device) {
-        this.extensionDevices[extensionId] = device;
+    /**
+     * Register an extension that communications with a hardware peripheral by id,
+     * to have access to it and its peripheral functions in the future.
+     * @param {string} extensionId - the id of the extension.
+     * @param {object} extension - the extension to register.
+     */
+    registerPeripheralExtension (extensionId, extension) {
+        this.peripheralExtensions[extensionId] = extension;
     }
 
-    startDeviceScan (extensionId) {
-        if (this.extensionDevices[extensionId]) {
-            this.extensionDevices[extensionId].startDeviceScan();
+    /**
+     * Tell the specified extension to scan for a peripheral.
+     * @param {string} extensionId - the id of the extension.
+     */
+    scanForPeripheral (extensionId) {
+        if (this.peripheralExtensions[extensionId]) {
+            this.peripheralExtensions[extensionId].scan();
         }
     }
 
-    connectToPeripheral (extensionId, peripheralId) {
-        if (this.extensionDevices[extensionId]) {
-            this.extensionDevices[extensionId].connectDevice(peripheralId);
+    /**
+     * Connect to the extension's specified peripheral.
+     * @param {string} extensionId - the id of the extension.
+     * @param {number} peripheralId - the id of the peripheral.
+     */
+    connectPeripheral (extensionId, peripheralId) {
+        if (this.peripheralExtensions[extensionId]) {
+            this.peripheralExtensions[extensionId].connect(peripheralId);
         }
     }
 
-    disconnectExtensionSession (extensionId) {
-        if (this.extensionDevices[extensionId]) {
-            this.extensionDevices[extensionId].disconnectSession();
+    /**
+     * Disconnect from the extension's connected peripheral.
+     * @param {string} extensionId - the id of the extension.
+     */
+    disconnectPeripheral (extensionId) {
+        if (this.peripheralExtensions[extensionId]) {
+            this.peripheralExtensions[extensionId].disconnect();
         }
     }
 
+    /**
+     * Returns whether the extension has a currently connected peripheral.
+     * @param {string} extensionId - the id of the extension.
+     * @return {boolean} - whether the extension has a connected peripheral.
+     */
     getPeripheralIsConnected (extensionId) {
         let isConnected = false;
-        if (this.extensionDevices[extensionId]) {
-            isConnected = this.extensionDevices[extensionId].getPeripheralIsConnected();
+        if (this.peripheralExtensions[extensionId]) {
+            isConnected = this.peripheralExtensions[extensionId].isConnected();
         }
         return isConnected;
+    }
+
+    /**
+     * Emit an event to indicate that the microphone is being used to stream audio.
+     * @param {boolean} listening - true if the microphone is currently listening.
+     */
+    emitMicListening (listening) {
+        this.emit(Runtime.MIC_LISTENING, listening);
     }
 
     /**
@@ -1822,6 +1869,31 @@ class Runtime extends EventEmitter {
             varNames = varNames.concat(targetVarNames);
         }
         return varNames;
+    }
+
+    /**
+     * Get the label or label function for an opcode
+     * @param {string} extendedOpcode - the opcode you want a label for
+     * @return {object} - object with label and category
+     * @property {string} category - the category for this opcode
+     * @property {Function} [labelFn] - function to generate the label for this opcode
+     * @property {string} [label] - the label for this opcode if `labelFn` is absent
+     */
+    getLabelForOpcode (extendedOpcode) {
+        const [category, opcode] = StringUtil.splitFirst(extendedOpcode, '_');
+        if (!(category && opcode)) return;
+
+        const categoryInfo = this._blockInfo.find(ci => ci.id === category);
+        if (!categoryInfo) return;
+
+        const block = categoryInfo.blocks.find(b => b.info.opcode === opcode);
+        if (!block) return;
+
+        // TODO: should this use some other category? Also, we may want to format the label in a locale-specific way.
+        return {
+            category: 'data',
+            label: `${categoryInfo.name}: ${block.info.text}`
+        };
     }
 
     /**
