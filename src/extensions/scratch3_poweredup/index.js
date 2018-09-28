@@ -58,21 +58,7 @@ const PoweredUpTypes = {
  * @enum {number}
  */
 const PoweredUpConnectIDs = {
-    LED: 0x32,
-    PIEZO: 5
-};
-
-/**
- * Enum for ids for various output commands on the PoweredUp.
- * @readonly
- * @enum {number}
- */
-const PoweredUpCommands = {
-    MOTOR_POWER: 1,
-    PLAY_TONE: 2,
-    STOP_TONE: 3,
-    WRITE_RGB: 4,
-    SET_VOLUME: 255
+    LED: 0x32
 };
 
 /**
@@ -447,39 +433,6 @@ class PoweredUp {
     }
 
     /**
-     * Play a tone from the WeDo 2.0 hub for a specific amount of time.
-     * @param {int} tone - the pitch of the tone, in Hz.
-     * @param {int} milliseconds - the duration of the note, in milliseconds.
-     * @return {Promise} - a promise of the completion of the play tone send operation.
-     */
-    playTone (tone, milliseconds) {
-        const cmd = new Uint8Array(7);
-        cmd[0] = PoweredUpConnectIDs.PIEZO; // connect id
-        cmd[1] = PoweredUpCommands.PLAY_TONE; // command
-        cmd[2] = 4; // 4 bytes to follow
-        cmd[3] = tone;
-        cmd[4] = tone >> 8;
-        cmd[5] = milliseconds;
-        cmd[6] = milliseconds >> 8;
-
-        return this._send(UUID.OUTPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd));
-    }
-
-    /**
-     * Stop the tone playing from the WeDo 2.0 hub, if any.
-     * @return {Promise} - a promise that the command sent.
-     */
-    stopTone () {
-        const cmd = new Uint8Array(2);
-        cmd[0] = PoweredUpConnectIDs.PIEZO; // connect id
-        cmd[1] = PoweredUpCommands.STOP_TONE; // command
-
-        // Send this command without using the rate limiter, because it is only triggered
-        // by the stop button.
-        return this._send(UUID.OUTPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd), false);
-    }
-
-    /**
      * Called by the runtime when user wants to scan for a device.
      */
     // TODO: rename scan?
@@ -675,10 +628,7 @@ class PoweredUp {
      */
     _stopAll () {
         if (!this.getPeripheralIsConnected()) return;
-        this.stopTone()
-            .then(() => {
-                this.stopAllMotors();
-            });
+        this.stopAllMotors();
     }
 }
 
@@ -1038,27 +988,6 @@ class Scratch3PoweredUpBlocks {
     }
 
     /**
-     * Make the WeDo 2.0 hub play a MIDI note for the specified duration.
-     * @param {object} args - the block's arguments.
-     * @property {number} NOTE - the MIDI note to play.
-     * @property {number} DURATION - the duration of the note, in seconds.
-     * @return {Promise} - a promise which will resolve at the end of the duration.
-     */
-    playNoteFor (args) {
-        let durationMS = Cast.toNumber(args.DURATION) * 1000;
-        durationMS = MathUtil.clamp(durationMS, 0, 3000);
-        const note = MathUtil.clamp(Cast.toNumber(args.NOTE), 25, 125); // valid PoweredUp sounds
-        if (durationMS === 0) return; // PoweredUp plays duration '0' forever
-        return new Promise(resolve => {
-            const tone = this._noteToTone(note);
-            this._device.playTone(tone, durationMS);
-
-            // Ensure this block runs for a fixed amount of time even when no device is connected.
-            setTimeout(resolve, durationMS);
-        });
-    }
-
-    /**
      * Compare the distance sensor's value to a reference.
      * @param {object} args - the block's arguments.
      * @property {string} OP - the comparison operation: '<' or '>'.
@@ -1179,16 +1108,6 @@ class Scratch3PoweredUpBlocks {
         for (const index of motors) {
             callback(index);
         }
-    }
-
-    /**
-     * @param {number} midiNote - the MIDI note value to convert.
-     * @return {number} - the frequency, in Hz, corresponding to that MIDI note value.
-     * @private
-     */
-    _noteToTone (midiNote) {
-        // Note that MIDI note 69 is A4, 440 Hz
-        return 440 * Math.pow(2, (midiNote - 69) / 12);
     }
 }
 
