@@ -58,7 +58,7 @@ const PoweredUpTypes = {
  * @enum {number}
  */
 const PoweredUpConnectIDs = {
-    LED: 6,
+    LED: 0x32,
     PIEZO: 5
 };
 
@@ -432,35 +432,16 @@ class PoweredUp {
         });
     }
 
-    /**
-     * Set the WeDo 2.0 hub's LED to a specific color.
-     * @param {int} rgb - a 24-bit RGB color in 0xRRGGBB format.
-     * @return {Promise} - a promise of the completion of the set led send operation.
-     */
-    setLED (rgb) {
-        const cmd = new Uint8Array(6);
-        cmd[0] = PoweredUpConnectIDs.LED; // connect id
-        cmd[1] = PoweredUpCommands.WRITE_RGB; // command
-        cmd[2] = 3; // 3 bytes to follow
-        cmd[3] = (rgb >> 16) & 0x000000FF;
-        cmd[4] = (rgb >> 8) & 0x000000FF;
-        cmd[5] = (rgb) & 0x000000FF;
-
-        return this._send(UUID.OUTPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd));
-    }
-
-    /**
-     * Switch off the LED on the PoweredUp.
-     * @return {Promise} - a promise of the completion of the stop led send operation.
-     */
-    stopLED () {
-        const cmd = new Uint8Array(6);
-        cmd[0] = PoweredUpConnectIDs.LED; // connect id
-        cmd[1] = PoweredUpCommands.WRITE_RGB; // command
-        cmd[2] = 3; // 3 bytes to follow
-        cmd[3] = 0x000000; // off
-        cmd[4] = 0x000000;
-        cmd[5] = 0x000000;
+    setLED (color) {
+        const cmd = new Uint8Array(8);
+        cmd[0] = 0x08;
+        cmd[1] = 0x00;
+        cmd[2] = 0x81;
+        cmd[3] = PoweredUpConnectIDs.LED; // connect id
+        cmd[4] = 0x11;
+        cmd[5] = 0x51;
+        cmd[6] = 0x00;
+        cmd[7] = allColors.indexOf(color);
 
         return this._send(UUID.OUTPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd));
     }
@@ -736,6 +717,34 @@ const TiltDirection = {
     ANY: 'any'
 };
 
+const Color = {
+    BLACK: 'black',
+    PINK: 'pink',
+    PURPLE: 'purple',
+    BLUE: 'blue',
+    LIGHTBLUE: 'light blue',
+    LIGHTGREEN: 'light green',
+    GREEN: 'green',
+    YELLOW: 'yellow',
+    ORANGE: 'orange',
+    RED: 'red',
+    WHITE: 'white'
+};
+
+const allColors = [
+    Color.BLACK,
+    Color.PINK,
+    Color.PURPLE,
+    Color.BLUE,
+    Color.LIGHTBLUE,
+    Color.LIGHTGREEN,
+    Color.GREEN,
+    Color.YELLOW,
+    Color.ORANGE,
+    Color.RED,
+    Color.WHITE
+];
+
 /**
  * Scratch 3.0 blocks to interact with a LEGO WeDo 2.0 device.
  */
@@ -839,6 +848,22 @@ class Scratch3PoweredUpBlocks {
                             defaultValue: MotorID.A
                         }
                     }
+                },
+                {
+                    opcode: 'setLEDColor',
+                    text: formatMessage({
+                        id: 'poweredup.setLEDColor',
+                        default: 'set LED color to [LED_COLOR]',
+                        description: 'set the LED color'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        LED_COLOR: {
+                            type: ArgumentType.STRING,
+                            menu: 'LED_COLOR',
+                            defaultValue: Color.BLUE
+                        }
+                    }
                 }
             ],
             menus: {
@@ -847,6 +872,7 @@ class Scratch3PoweredUpBlocks {
                 TILT_DIRECTION: [TiltDirection.UP, TiltDirection.DOWN, TiltDirection.LEFT, TiltDirection.RIGHT],
                 TILT_DIRECTION_ANY:
                     [TiltDirection.UP, TiltDirection.DOWN, TiltDirection.LEFT, TiltDirection.RIGHT, TiltDirection.ANY],
+                LED_COLOR: allColors,
                 OP: ['<', '>']
             }
         };
@@ -1001,23 +1027,8 @@ class Scratch3PoweredUpBlocks {
         });
     }
 
-    /**
-     * Set the LED's hue.
-     * @param {object} args - the block's arguments.
-     * @property {number} HUE - the hue to set, in the range [0,100].
-     * @return {Promise} - a Promise that resolves after some delay.
-     */
-    setLightHue (args) {
-        // Convert from [0,100] to [0,360]
-        let inputHue = Cast.toNumber(args.HUE);
-        inputHue = MathUtil.wrapClamp(inputHue, 0, 100);
-        const hue = inputHue * 360 / 100;
-
-        const rgbObject = color.hsvToRgb({h: hue, s: 1, v: 1});
-
-        const rgbDecimal = color.rgbToDecimal(rgbObject);
-
-        this._device.setLED(rgbDecimal);
+    setLEDColor (args) {
+        this._device.setLED(args.LED_COLOR);
 
         return new Promise(resolve => {
             window.setTimeout(() => {
