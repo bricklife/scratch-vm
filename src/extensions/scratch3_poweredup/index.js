@@ -707,7 +707,6 @@ class PoweredUp {
  * @enum {string}
  */
 const MotorID = {
-    DEFAULT: 'port',
     A: 'port A',
     B: 'port B',
     ALL: 'all ports'
@@ -793,7 +792,7 @@ class Scratch3PoweredUpBlocks {
                         MOTOR_ID: {
                             type: ArgumentType.STRING,
                             menu: 'MOTOR_ID',
-                            defaultValue: MotorID.DEFAULT
+                            defaultValue: MotorID.A
                         },
                         POWER: {
                             type: ArgumentType.NUMBER,
@@ -817,7 +816,7 @@ class Scratch3PoweredUpBlocks {
                         MOTOR_ID: {
                             type: ArgumentType.STRING,
                             menu: 'MOTOR_ID',
-                            defaultValue: MotorID.DEFAULT
+                            defaultValue: MotorID.A
                         },
                         POWER: {
                             type: ArgumentType.NUMBER,
@@ -837,13 +836,13 @@ class Scratch3PoweredUpBlocks {
                         MOTOR_ID: {
                             type: ArgumentType.STRING,
                             menu: 'MOTOR_ID',
-                            defaultValue: MotorID.DEFAULT
+                            defaultValue: MotorID.A
                         }
                     }
                 }
             ],
             menus: {
-                MOTOR_ID: [MotorID.DEFAULT, MotorID.A, MotorID.B, MotorID.ALL],
+                MOTOR_ID: [MotorID.A, MotorID.B, MotorID.ALL],
                 MOTOR_DIRECTION: [MotorDirection.FORWARD, MotorDirection.BACKWARD, MotorDirection.REVERSE],
                 TILT_DIRECTION: [TiltDirection.UP, TiltDirection.DOWN, TiltDirection.LEFT, TiltDirection.RIGHT],
                 TILT_DIRECTION_ANY:
@@ -1159,7 +1158,6 @@ class Scratch3PoweredUpBlocks {
             motors = [1];
             break;
         case MotorID.ALL:
-        case MotorID.DEFAULT:
             motors = [0, 1];
             break;
         default:
