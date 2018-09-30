@@ -419,6 +419,14 @@ class PoweredUp {
     }
 
     setLED (color) {
+        let index = allColors.indexOf(color);
+        if (index < 0) {
+            index = parseInt(color, 10);
+        }
+        if (index < 0) {
+            index = 0;
+        }
+        
         const cmd = new Uint8Array(8);
         cmd[0] = 0x08;
         cmd[1] = 0x00;
@@ -427,7 +435,7 @@ class PoweredUp {
         cmd[4] = 0x11;
         cmd[5] = 0x51;
         cmd[6] = 0x00;
-        cmd[7] = allColors.indexOf(color);
+        cmd[7] = index;
 
         return this._send(UUID.OUTPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd));
     }
@@ -1101,8 +1109,13 @@ class Scratch3PoweredUpBlocks {
             motors = [0, 1];
             break;
         default:
-            log.warn(`Invalid motor ID: ${motorID}`);
-            motors = [];
+            let rawID = parseInt(motorID, 10);
+            if (rawID >= 0) {
+                motors = [rawID];
+            } else {
+                log.warn(`Invalid motor ID: ${motorID}`);
+                motors = [];
+            }
             break;
         }
         for (const index of motors) {
