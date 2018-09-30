@@ -421,10 +421,7 @@ class PoweredUp {
     setLED (color) {
         let index = allColors.indexOf(color);
         if (index < 0) {
-            index = parseInt(color, 10);
-        }
-        if (index < 0) {
-            index = 0;
+            index = Cast.toNumber(color);
         }
         
         const cmd = new Uint8Array(8);
@@ -1109,13 +1106,8 @@ class Scratch3PoweredUpBlocks {
             motors = [0, 1];
             break;
         default:
-            let rawID = parseInt(motorID, 10);
-            if (rawID >= 0) {
-                motors = [rawID];
-            } else {
-                log.warn(`Invalid motor ID: ${motorID}`);
-                motors = [];
-            }
+            let rawID = Cast.toNumber(motorID);
+            motors = [rawID];
             break;
         }
         for (const index of motors) {
