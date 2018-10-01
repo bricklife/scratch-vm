@@ -38,18 +38,18 @@ const BLESendInterval = 100;
 const BLESendRateMax = 20;
 
 /**
- * Enum for WeDo 2.0 sensor and output types.
+ * Enum for Powered Up sensor and output types.
  * @readonly
  * @enum {number}
  */
 const PoweredUpTypes = {
-    MOTOR: 1,
-    TRAIN_MOTOR: 2,
-    LED_LIGHT: 8,
-    PIEZO: 22,
-    LED: 23,
-    TILT: 34,
-    DISTANCE: 35
+    MOTOR: 0x01,
+    TRAIN_MOTOR: 0x02,
+    LED_LIGHT: 0x08,
+    LED: 0x17,
+    TILT: 0x22,
+    MOTION: 0x23,
+    COLOR_DISTANCE: 0x25
 };
 
 /**
@@ -62,35 +62,17 @@ const PoweredUpConnectIDs = {
 };
 
 /**
- * Enum for modes for input sensors on the PoweredUp.
- * @enum {number}
- */
-const PoweredUpModes = {
-    TILT: 0, // angle
-    DISTANCE: 0 // detect
-};
-
-/**
- * Enum for units for input sensors on the PoweredUp.
- * @enum {number}
- */
-const PoweredUpUnits = {
-    TILT: 0, // raw
-    DISTANCE: 1 // percent
-};
-
-/**
- * Manage power, direction, and timers for one WeDo 2.0 motor.
+ * Manage power, direction, and timers for one Powered Up motor.
  */
 class PoweredUpMotor {
     /**
      * Construct a PoweredUpMotor instance.
-     * @param {PoweredUp} parent - the WeDo 2.0 device which owns this motor.
+     * @param {PoweredUp} parent - the Powered Up device which owns this motor.
      * @param {int} index - the zero-based index of this motor on its parent device.
      */
     constructor (parent, index) {
         /**
-         * The WeDo 2.0 device which owns this motor.
+         * The Powered Up device which owns this motor.
          * @type {PoweredUp}
          * @private
          */
@@ -315,7 +297,7 @@ class PoweredUpMotor {
 }
 
 /**
- * Manage communication with a WeDo 2.0 device over a Bluetooth Low Energy client socket.
+ * Manage communication with a Powered Up device over a Bluetooth Low Energy client socket.
  */
 class PoweredUp {
 
@@ -337,7 +319,7 @@ class PoweredUp {
         this._ports = {}; // TODO: rename?
 
         /**
-         * The motors which this WeDo 2.0 could possibly have.
+         * The motors which this Powered Up could possibly have.
          * @type {PoweredUpMotor[]}
          * @private
          */
@@ -534,14 +516,24 @@ class PoweredUp {
         }
         case 0x45: {
             // read incoming sensor value
-            const connectID = data[1];
+            const connectID = data[3];
             const type = this._ports[connectID];
-            if (type === PoweredUpTypes.DISTANCE) {
-                this._sensors.distance = data[2];
-            }
-            if (type === PoweredUpTypes.TILT) {
-                this._sensors.tiltX = data[2];
-                this._sensors.tiltY = data[3];
+            switch (type) {
+            case PoweredUpTypes.MOTION:
+                this._sensors.distance = data[4];
+                break;
+            case PoweredUpTypes.TILT:
+                this._sensors.tiltX = data[4];
+                this._sensors.tiltY = data[5];
+                break;
+            case PoweredUpTypes.MOTION:
+                this._sensors.distance = data[4];
+                break;
+            case PoweredUpTypes.COLOR_DISTANCE:
+                this._sensors.distance = data[5];
+                break;
+            default:
+                break;
             }
             break;
         }
@@ -561,7 +553,7 @@ class PoweredUp {
         if (type === PoweredUpTypes.TILT) {
             this._sensors.tiltX = this._sensors.tiltY = 0;
         }
-        if (type === PoweredUpTypes.DISTANCE) {
+        if (type === PoweredUpTypes.MOTION) {
             this._sensors.distance = 0;
         }
         delete this._ports[connectID];
@@ -583,53 +575,44 @@ class PoweredUp {
         if (type === PoweredUpTypes.MOTOR || type === PoweredUpTypes.TRAIN_MOTOR || type === PoweredUpTypes.LED_LIGHT) {
             this._motors[connectID] = new PoweredUpMotor(this, connectID);
         } else {
-            return;
-            // Register tilt or distance sensor
-            const typeString = type === PoweredUpTypes.DISTANCE ? 'DISTANCE' : 'TILT';
-            const cmd = new Uint8Array(11);
-            cmd[0] = 1; // sensor format
-            cmd[1] = 2; // command type: write
-            cmd[2] = connectID; // connect id
-            cmd[3] = type; // type
-            cmd[4] = PoweredUpModes[typeString]; // mode
-            cmd[5] = 1; // delta interval, 4 bytes, 1 = continuous updates
-            cmd[6] = 0;
-            cmd[7] = 0;
-            cmd[8] = 0;
-            cmd[9] = PoweredUpUnits[typeString]; // unit
-            cmd[10] = 1; // notifications enabled: true
+            let mode = this._sensorMode(type);
+            if (mode != null) {
+                // Register sensors
+                const cmd = new Uint8Array(10);
+                cmd[0] = 0x0a;
+                cmd[1] = 0x00;
+                cmd[2] = 0x41;
+                cmd[3] = connectID;
+                cmd[4] = mode;
+                cmd[5] = 0x01
+                cmd[6] = 0x00;
+                cmd[7] = 0x00;
+                cmd[8] = 0x00;
+                cmd[9] = 0x01; // notifications enabled: true
+                
+                this._send(UUID.INPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd))
+                    .then(() => {
+                        this._ble.startNotifications(UUID.IO_SERVICE, UUID.INPUT_VALUES, this._onMessage);
+                    });
+            }
+        }
+    }
 
-            this._send(UUID.INPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd))
-                .then(() => {
-                    this._ble.startNotifications(UUID.IO_SERVICE, UUID.INPUT_VALUES, this._onMessage);
-                });
+    _sensorMode (type) {
+        switch (type) {
+        case PoweredUpTypes.TILT:
+            return 0; // angle
+        case PoweredUpTypes.MOTION:
+            return 0; // detect
+        case PoweredUpTypes.COLOR_DISTANCE:
+            return 8; // Color, Distance, and Ambient Light Level
+        default:
+            return null;
         }
     }
 
     /**
-     * Sets the input mode of the LED to RGB.
-     * @return {Promise} - a promise returned by the send operation.
-     * @private
-     */
-    _setLEDMode () {
-        const cmd = new Uint8Array(11);
-        cmd[0] = 1; // sensor format
-        cmd[1] = 2; // command type: 2 = write
-        cmd[2] = PoweredUpConnectIDs.LED; // port
-        cmd[3] = PoweredUpTypes.LED; // type
-        cmd[4] = 1; // mode
-        cmd[5] = 0; // delta interval, 4 bytes
-        cmd[6] = 0;
-        cmd[7] = 0;
-        cmd[8] = 0;
-        cmd[9] = 0; // unit = raw
-        cmd[10] = 0; // notifications enabled: false
-
-        return this._send(UUID.INPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd));
-    }
-
-    /**
-     * Stop the tone playing and motors on the WeDo 2.0 hub.
+     * Stop the tone playing and motors on the Powered Up hub.
      */
     _stopAll () {
         if (!this.getPeripheralIsConnected()) return;
@@ -701,7 +684,7 @@ const allColors = [
 ];
 
 /**
- * Scratch 3.0 blocks to interact with a LEGO WeDo 2.0 device.
+ * Scratch 3.0 blocks to interact with a LEGO Powered Up device.
  */
 class Scratch3PoweredUpBlocks {
 
@@ -720,7 +703,7 @@ class Scratch3PoweredUpBlocks {
     }
 
     /**
-     * Construct a set of WeDo 2.0 blocks.
+     * Construct a set of Powered Up blocks.
      * @param {Runtime} runtime - the Scratch 3.0 runtime.
      */
     constructor (runtime) {
@@ -817,6 +800,26 @@ class Scratch3PoweredUpBlocks {
                             type: ArgumentType.STRING,
                             menu: 'LED_COLOR',
                             defaultValue: Color.BLUE
+                        }
+                    }
+                },
+                {
+                    opcode: 'whenDistance',
+                    text: formatMessage({
+                        id: 'poweredup.whenDistance',
+                        default: 'when distance [OP] [REFERENCE]',
+                        description: 'check for when distance is < or > than reference'
+                    }),
+                    blockType: BlockType.HAT,
+                    arguments: {
+                        OP: {
+                            type: ArgumentType.STRING,
+                            menu: 'OP',
+                            defaultValue: '<'
+                        },
+                        REFERENCE: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 5
                         }
                     }
                 }
