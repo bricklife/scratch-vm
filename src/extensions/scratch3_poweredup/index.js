@@ -512,7 +512,7 @@ class PoweredUp {
      */
     _onMessage (base64) {
         const data = Base64Util.base64ToUint8Array(base64);
-        log.info(`> [${data}]`);
+        // log.info(`> [${data}]`);
 
         switch (data[2]) {
         case 0x04: {
