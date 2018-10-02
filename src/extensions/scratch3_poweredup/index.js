@@ -745,7 +745,7 @@ class Scratch3PoweredUpBlocks {
                 {
                     opcode: 'startMotorPowerFor',
                     text: formatMessage({
-                        id: 'wedo2.startMotorPowerFor',
+                        id: 'poweredup.startMotorPowerFor',
                         default: 'set [MOTOR_ID] power to [POWER] for [DURATION] sec',
                         description: 'set the motor\'s power and turn it on for some time'
                     }),
