@@ -338,7 +338,8 @@ class PoweredUp {
         this._sensors = {
             tiltX: 0,
             tiltY: 0,
-            distance: 0
+            distance: 0,
+            color: -1
         };
 
         /**
@@ -380,6 +381,13 @@ class PoweredUp {
      */
     get distance () {
         return this._sensors.distance;
+    }
+
+    /**
+     * @return {number} - the latest value received from the color sensor.
+     */
+    get color () {
+        return this._sensors.color;
     }
 
     /**
@@ -452,7 +460,8 @@ class PoweredUp {
         this._sensors = {
             tiltX: 0,
             tiltY: 0,
-            distance: 0
+            distance: 0,
+            color: -1
         };
 
         this._ble.disconnect();
@@ -533,6 +542,7 @@ class PoweredUp {
                 this._sensors.distance = data[4];
                 break;
             case PoweredUpTypes.COLOR_DISTANCE:
+                this._sensors.color = data[4];
                 this._sensors.distance = data[5];
                 break;
             default:
@@ -558,6 +568,10 @@ class PoweredUp {
         }
         if (type === PoweredUpTypes.MOTION) {
             this._sensors.distance = 0;
+        }
+        if (type === PoweredUpTypes.COLOR_DISTANCE) {
+            this._sensors.distance = 0;
+            this._sensors.color = -1;
         }
         delete this._ports[connectID];
         this._motors[connectID] = null;
@@ -615,7 +629,7 @@ class PoweredUp {
      * Stop the tone playing and motors on the Powered Up hub.
      */
     _stopAll () {
-        if (!this.getPeripheralIsConnected()) return;
+        if (!this.isConnected()) return;
         this.stopAllMotors();
     }
 }
@@ -666,7 +680,8 @@ const Color = {
     YELLOW: 'yellow',
     ORANGE: 'orange',
     RED: 'red',
-    WHITE: 'white'
+    WHITE: 'white',
+    NONE: 'none'
 };
 
 const allColors = [
@@ -804,6 +819,47 @@ class Scratch3PoweredUpBlocks {
                     }
                 },
                 {
+                    opcode: 'whenColor',
+                    text: formatMessage({
+                        id: 'poweredup.whenColor',
+                        default: 'when sensor color is [SENSOR_COLOR]',
+                        description: 'check when sensor color changed to a certain color'
+                    }),
+                    blockType: BlockType.HAT,
+                    arguments: {
+                        SENSOR_COLOR: {
+                            type: ArgumentType.STRING,
+                            menu: 'SENSOR_COLOR',
+                            defaultValue: Color.NONE
+                        }
+                    }
+                },
+                {
+                    opcode: 'isColor',
+                    text: formatMessage({
+                        id: 'poweredup.isColor',
+                        default: 'sensor color is [SENSOR_COLOR]?',
+                        description: 'whether sensor color is a certain color'
+                    }),
+                    blockType: BlockType.BOOLEAN,
+                    arguments: {
+                        SENSOR_COLOR: {
+                            type: ArgumentType.STRING,
+                            menu: 'SENSOR_COLOR',
+                            defaultValue: Color.NONE
+                        }
+                    }
+                },
+                {
+                    opcode: 'getColor',
+                    text: formatMessage({
+                        id: 'poweredup.getColor',
+                        default: 'color',
+                        description: 'the value returned by the color sensor'
+                    }),
+                    blockType: BlockType.REPORTER
+                },
+                {
                     opcode: 'whenDistance',
                     text: formatMessage({
                         id: 'poweredup.whenDistance',
@@ -840,6 +896,15 @@ class Scratch3PoweredUpBlocks {
                 TILT_DIRECTION_ANY:
                     [TiltDirection.UP, TiltDirection.DOWN, TiltDirection.LEFT, TiltDirection.RIGHT, TiltDirection.ANY],
                 LED_COLOR: allColors,
+                SENSOR_COLOR: [
+                    Color.NONE,
+                    Color.BLACK,
+                    Color.BLUE,
+                    Color.LIGHTGREEN,
+                    Color.YELLOW,
+                    Color.RED,
+                    Color.WHITE
+                ],
                 OP: ['<', '>']
             }
         };
@@ -1036,10 +1101,26 @@ class Scratch3PoweredUpBlocks {
     }
 
     /**
-     * @return {number} - the distance sensor's value, scaled to the [0,100] range.
+     * @return {number} - the distance sensor's value, scaled to the [0,10] range.
      */
     getDistance () {
         return this._peripheral.distance;
+    }
+
+    whenColor (args) {
+        return this._isColor(args.SENSOR_COLOR);
+    }
+
+    isColor (args) {
+        return this._isColor(args.SENSOR_COLOR);
+    }
+
+    getColor () {
+        let color = allColors[this._peripheral.color];
+        if (color == null) {
+            return Color.NONE;
+        }
+        return color;
     }
 
     /**
@@ -1078,6 +1159,17 @@ class Scratch3PoweredUpBlocks {
         }
     }
 
+    _isColor (color) {
+        let index = allColors.indexOf(color);
+        if (index < 0) {
+            if (color == Color.NONE) {
+                index == -1;
+            } else {
+                return false;
+            }
+        }
+        return this._peripheral.color == index;
+    }
     /**
      * @param {TiltDirection} direction - the direction (up, down, left, right) to check.
      * @return {number} - the tilt sensor's angle in the specified direction.
