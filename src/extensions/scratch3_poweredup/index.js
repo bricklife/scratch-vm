@@ -3,11 +3,11 @@ const BlockType = require('../../extension-support/block-type');
 const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
 const color = require('../../util/color');
-const log = require('../../util/log');
-const BLESession = require('../../io/bleSession');
+const BLE = require('../../io/ble');
 const Base64Util = require('../../util/base64-util');
 const MathUtil = require('../../util/math-util');
 const RateLimiter = require('../../util/rateLimiter.js');
+const log = require('../../util/log');
 
 /**
  * Icon svg to be displayed at the left edge of each extension block, encoded as a data URI.
@@ -38,18 +38,18 @@ const BLESendInterval = 100;
 const BLESendRateMax = 20;
 
 /**
- * Enum for WeDo 2.0 sensor and output types.
+ * Enum for Powered Up sensor and output types.
  * @readonly
  * @enum {number}
  */
 const PoweredUpTypes = {
-    MOTOR: 1,
-    TRAIN_MOTOR: 2,
-    LED_LIGHT: 8,
-    PIEZO: 22,
-    LED: 23,
-    TILT: 34,
-    DISTANCE: 35
+    MOTOR: 0x01,
+    TRAIN_MOTOR: 0x02,
+    LED_LIGHT: 0x08,
+    LED: 0x17,
+    TILT: 0x22,
+    MOTION: 0x23,
+    COLOR_DISTANCE: 0x25
 };
 
 /**
@@ -62,35 +62,17 @@ const PoweredUpConnectIDs = {
 };
 
 /**
- * Enum for modes for input sensors on the PoweredUp.
- * @enum {number}
- */
-const PoweredUpModes = {
-    TILT: 0, // angle
-    DISTANCE: 0 // detect
-};
-
-/**
- * Enum for units for input sensors on the PoweredUp.
- * @enum {number}
- */
-const PoweredUpUnits = {
-    TILT: 0, // raw
-    DISTANCE: 1 // percent
-};
-
-/**
- * Manage power, direction, and timers for one WeDo 2.0 motor.
+ * Manage power, direction, and timers for one Powered Up motor.
  */
 class PoweredUpMotor {
     /**
      * Construct a PoweredUpMotor instance.
-     * @param {PoweredUp} parent - the WeDo 2.0 device which owns this motor.
+     * @param {PoweredUp} parent - the Powered Up device which owns this motor.
      * @param {int} index - the zero-based index of this motor on its parent device.
      */
     constructor (parent, index) {
         /**
-         * The WeDo 2.0 device which owns this motor.
+         * The Powered Up device which owns this motor.
          * @type {PoweredUp}
          * @private
          */
@@ -315,7 +297,7 @@ class PoweredUpMotor {
 }
 
 /**
- * Manage communication with a WeDo 2.0 device over a Bluetooth Low Energy client socket.
+ * Manage communication with a Powered Up device over a Bluetooth Low Energy client socket.
  */
 class PoweredUp {
 
@@ -330,6 +312,11 @@ class PoweredUp {
         this._runtime.on('PROJECT_STOP_ALL', this._stopAll.bind(this));
 
         /**
+         * The id of the extension this peripheral belongs to.
+         */
+        this._extensionId = extensionId;
+
+        /**
          * The device ports that connect to motors and sensors.
          * @type {string[]}
          * @private
@@ -337,7 +324,7 @@ class PoweredUp {
         this._ports = {}; // TODO: rename?
 
         /**
-         * The motors which this WeDo 2.0 could possibly have.
+         * The motors which this Powered Up could possibly have.
          * @type {PoweredUpMotor[]}
          * @private
          */
@@ -351,7 +338,8 @@ class PoweredUp {
         this._sensors = {
             tiltX: 0,
             tiltY: 0,
-            distance: 0
+            distance: 0,
+            color: -1
         };
 
         /**
@@ -360,10 +348,7 @@ class PoweredUp {
          * @private
          */
         this._ble = null;
-        this._runtime.registerExtensionDevice(extensionId, this);
-
-        this._onConnect = this._onConnect.bind(this);
-        this._onMessage = this._onMessage.bind(this);
+        this._runtime.registerPeripheralExtension(extensionId, this);
 
         /**
          * A rate limiter utility, to help limit the rate at which we send BLE messages
@@ -372,6 +357,9 @@ class PoweredUp {
          * @private
          */
         this._rateLimiter = new RateLimiter(BLESendRateMax);
+
+        this._onConnect = this._onConnect.bind(this);
+        this._onMessage = this._onMessage.bind(this);
     }
 
     /**
@@ -393,6 +381,13 @@ class PoweredUp {
      */
     get distance () {
         return this._sensors.distance;
+    }
+
+    /**
+     * @return {number} - the latest value received from the color sensor.
+     */
+    get color () {
+        return this._sensors.color;
     }
 
     /**
@@ -440,10 +435,11 @@ class PoweredUp {
     /**
      * Called by the runtime when user wants to scan for a device.
      */
-    // TODO: rename scan?
-    startDeviceScan () {
-        this._ble = new BLESession(this._runtime, {
-            filters: [{services: [UUID.DEVICE_SERVICE]}]
+    scan () {
+        this._ble = new BLE(this._runtime, this._extensionId, {
+            filters: [{
+                services: [UUID.DEVICE_SERVICE]
+            }]
         }, this._onConnect);
     }
 
@@ -451,46 +447,36 @@ class PoweredUp {
      * Called by the runtime when user wants to connect to a certain device.
      * @param {number} id - the id of the device to connect to.
      */
-    // TODO: rename connect?
-    connectDevice (id) {
-        this._ble.connectDevice(id);
+    connect (id) {
+        this._ble.connectPeripheral(id);
     }
 
     /**
      * Disconnects from the current BLE session.
      */
-    // TODO: rename disconnect?
-    disconnectSession () {
+    disconnect () {
         this._ports = {};
         this._motors = [null, null];
         this._sensors = {
             tiltX: 0,
             tiltY: 0,
-            distance: 0
+            distance: 0,
+            color: -1
         };
 
-        this._ble.disconnectSession();
+        this._ble.disconnect();
     }
 
     /**
      * Called by the runtime to detect whether the device is connected.
      * @return {boolean} - the connected state.
      */
-    // TODO: rename isConnected
-    getPeripheralIsConnected () {
+    isConnected () {
         let connected = false;
         if (this._ble) {
-            connected = this._ble.getPeripheralIsConnected();
+            connected = this._ble.isConnected();
         }
         return connected;
-    }
-
-    /**
-     * Sets LED mode and initial color and starts reading data from device after BLE has connected.
-     * @private
-     */
-    _onConnect () {
-        this._ble.startNotifications(UUID.DEVICE_SERVICE, UUID.ATTACHED_IO, this._onMessage);
     }
 
     /**
@@ -502,7 +488,7 @@ class PoweredUp {
      * @private
      */
     _send (uuid, message, useLimiter = true) {
-        if (!this.getPeripheralIsConnected()) return Promise.resolve();
+        if (!this.isConnected()) return Promise.resolve();
 
         if (useLimiter) {
             if (!this._rateLimiter.okayToSend()) return Promise.resolve();
@@ -512,13 +498,21 @@ class PoweredUp {
     }
 
     /**
+     * Sets LED mode and initial color and starts reading data from device after BLE has connected.
+     * @private
+     */
+    _onConnect () {
+        this._ble.startNotifications(UUID.DEVICE_SERVICE, UUID.ATTACHED_IO, this._onMessage);
+    }
+
+    /**
      * Process the sensor data from the incoming BLE characteristic.
      * @param {object} base64 - the incoming BLE data.
      * @private
      */
     _onMessage (base64) {
         const data = Base64Util.base64ToUint8Array(base64);
-        // log.info(data);
+        // log.info(`> [${data}]`);
 
         switch (data[2]) {
         case 0x04: {
@@ -534,14 +528,25 @@ class PoweredUp {
         }
         case 0x45: {
             // read incoming sensor value
-            const connectID = data[1];
+            const connectID = data[3];
             const type = this._ports[connectID];
-            if (type === PoweredUpTypes.DISTANCE) {
-                this._sensors.distance = data[2];
-            }
-            if (type === PoweredUpTypes.TILT) {
-                this._sensors.tiltX = data[2];
-                this._sensors.tiltY = data[3];
+            switch (type) {
+            case PoweredUpTypes.MOTION:
+                this._sensors.distance = data[4];
+                break;
+            case PoweredUpTypes.TILT:
+                this._sensors.tiltX = data[4];
+                this._sensors.tiltY = data[5];
+                break;
+            case PoweredUpTypes.MOTION:
+                this._sensors.distance = data[4];
+                break;
+            case PoweredUpTypes.COLOR_DISTANCE:
+                this._sensors.color = data[4];
+                this._sensors.distance = data[5];
+                break;
+            default:
+                break;
             }
             break;
         }
@@ -561,8 +566,12 @@ class PoweredUp {
         if (type === PoweredUpTypes.TILT) {
             this._sensors.tiltX = this._sensors.tiltY = 0;
         }
-        if (type === PoweredUpTypes.DISTANCE) {
+        if (type === PoweredUpTypes.MOTION) {
             this._sensors.distance = 0;
+        }
+        if (type === PoweredUpTypes.COLOR_DISTANCE) {
+            this._sensors.distance = 0;
+            this._sensors.color = -1;
         }
         delete this._ports[connectID];
         this._motors[connectID] = null;
@@ -583,56 +592,44 @@ class PoweredUp {
         if (type === PoweredUpTypes.MOTOR || type === PoweredUpTypes.TRAIN_MOTOR || type === PoweredUpTypes.LED_LIGHT) {
             this._motors[connectID] = new PoweredUpMotor(this, connectID);
         } else {
-            return;
-            // Register tilt or distance sensor
-            const typeString = type === PoweredUpTypes.DISTANCE ? 'DISTANCE' : 'TILT';
-            const cmd = new Uint8Array(11);
-            cmd[0] = 1; // sensor format
-            cmd[1] = 2; // command type: write
-            cmd[2] = connectID; // connect id
-            cmd[3] = type; // type
-            cmd[4] = PoweredUpModes[typeString]; // mode
-            cmd[5] = 1; // delta interval, 4 bytes, 1 = continuous updates
-            cmd[6] = 0;
-            cmd[7] = 0;
-            cmd[8] = 0;
-            cmd[9] = PoweredUpUnits[typeString]; // unit
-            cmd[10] = 1; // notifications enabled: true
+            let mode = this._sensorMode(type);
+            if (mode != null) {
+                // Register sensors
+                const cmd = new Uint8Array(10);
+                cmd[0] = 0x0a;
+                cmd[1] = 0x00;
+                cmd[2] = 0x41;
+                cmd[3] = connectID;
+                cmd[4] = mode;
+                cmd[5] = 0x01
+                cmd[6] = 0x00;
+                cmd[7] = 0x00;
+                cmd[8] = 0x00;
+                cmd[9] = 0x01; // notifications enabled: true
 
-            this._send(UUID.INPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd))
-                .then(() => {
-                    this._ble.startNotifications(UUID.IO_SERVICE, UUID.INPUT_VALUES, this._onMessage);
-                });
+                this._send(UUID.INPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd));
+            }
+        }
+    }
+
+    _sensorMode (type) {
+        switch (type) {
+        case PoweredUpTypes.TILT:
+            return 0; // angle
+        case PoweredUpTypes.MOTION:
+            return 0; // detect
+        case PoweredUpTypes.COLOR_DISTANCE:
+            return 8; // Color, Distance, and Ambient Light Level
+        default:
+            return null;
         }
     }
 
     /**
-     * Sets the input mode of the LED to RGB.
-     * @return {Promise} - a promise returned by the send operation.
-     * @private
-     */
-    _setLEDMode () {
-        const cmd = new Uint8Array(11);
-        cmd[0] = 1; // sensor format
-        cmd[1] = 2; // command type: 2 = write
-        cmd[2] = PoweredUpConnectIDs.LED; // port
-        cmd[3] = PoweredUpTypes.LED; // type
-        cmd[4] = 1; // mode
-        cmd[5] = 0; // delta interval, 4 bytes
-        cmd[6] = 0;
-        cmd[7] = 0;
-        cmd[8] = 0;
-        cmd[9] = 0; // unit = raw
-        cmd[10] = 0; // notifications enabled: false
-
-        return this._send(UUID.INPUT_COMMAND, Base64Util.uint8ArrayToBase64(cmd));
-    }
-
-    /**
-     * Stop the tone playing and motors on the WeDo 2.0 hub.
+     * Stop the tone playing and motors on the Powered Up hub.
      */
     _stopAll () {
-        if (!this.getPeripheralIsConnected()) return;
+        if (!this.isConnected()) return;
         this.stopAllMotors();
     }
 }
@@ -683,7 +680,8 @@ const Color = {
     YELLOW: 'yellow',
     ORANGE: 'orange',
     RED: 'red',
-    WHITE: 'white'
+    WHITE: 'white',
+    NONE: 'none'
 };
 
 const allColors = [
@@ -701,7 +699,7 @@ const allColors = [
 ];
 
 /**
- * Scratch 3.0 blocks to interact with a LEGO WeDo 2.0 device.
+ * Scratch 3.0 blocks to interact with a LEGO Powered Up device.
  */
 class Scratch3PoweredUpBlocks {
 
@@ -720,7 +718,7 @@ class Scratch3PoweredUpBlocks {
     }
 
     /**
-     * Construct a set of WeDo 2.0 blocks.
+     * Construct a set of Powered Up blocks.
      * @param {Runtime} runtime - the Scratch 3.0 runtime.
      */
     constructor (runtime) {
@@ -731,7 +729,7 @@ class Scratch3PoweredUpBlocks {
         this.runtime = runtime;
 
         // Create a new PoweredUp device instance
-        this._device = new PoweredUp(this.runtime, Scratch3PoweredUpBlocks.EXTENSION_ID);
+        this._peripheral = new PoweredUp(this.runtime, Scratch3PoweredUpBlocks.EXTENSION_ID);
     }
 
     /**
@@ -747,7 +745,7 @@ class Scratch3PoweredUpBlocks {
                 {
                     opcode: 'startMotorPowerFor',
                     text: formatMessage({
-                        id: 'wedo2.startMotorPowerFor',
+                        id: 'poweredup.startMotorPowerFor',
                         default: 'set [MOTOR_ID] power to [POWER] for [DURATION] sec',
                         description: 'set the motor\'s power and turn it on for some time'
                     }),
@@ -819,6 +817,76 @@ class Scratch3PoweredUpBlocks {
                             defaultValue: Color.BLUE
                         }
                     }
+                },
+                {
+                    opcode: 'whenColor',
+                    text: formatMessage({
+                        id: 'poweredup.whenColor',
+                        default: 'when sensor color is [SENSOR_COLOR]',
+                        description: 'check when sensor color changed to a certain color'
+                    }),
+                    blockType: BlockType.HAT,
+                    arguments: {
+                        SENSOR_COLOR: {
+                            type: ArgumentType.STRING,
+                            menu: 'SENSOR_COLOR',
+                            defaultValue: Color.NONE
+                        }
+                    }
+                },
+                {
+                    opcode: 'isColor',
+                    text: formatMessage({
+                        id: 'poweredup.isColor',
+                        default: 'sensor color is [SENSOR_COLOR]?',
+                        description: 'whether sensor color is a certain color'
+                    }),
+                    blockType: BlockType.BOOLEAN,
+                    arguments: {
+                        SENSOR_COLOR: {
+                            type: ArgumentType.STRING,
+                            menu: 'SENSOR_COLOR',
+                            defaultValue: Color.NONE
+                        }
+                    }
+                },
+                {
+                    opcode: 'getColor',
+                    text: formatMessage({
+                        id: 'poweredup.getColor',
+                        default: 'color',
+                        description: 'the value returned by the color sensor'
+                    }),
+                    blockType: BlockType.REPORTER
+                },
+                {
+                    opcode: 'whenDistance',
+                    text: formatMessage({
+                        id: 'poweredup.whenDistance',
+                        default: 'when distance [OP] [REFERENCE]',
+                        description: 'check for when distance is < or > than reference'
+                    }),
+                    blockType: BlockType.HAT,
+                    arguments: {
+                        OP: {
+                            type: ArgumentType.STRING,
+                            menu: 'OP',
+                            defaultValue: '<'
+                        },
+                        REFERENCE: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 5
+                        }
+                    }
+                },
+                {
+                    opcode: 'getDistance',
+                    text: formatMessage({
+                        id: 'poweredup.getDistance',
+                        default: 'distance',
+                        description: 'the value returned by the distance sensor'
+                    }),
+                    blockType: BlockType.REPORTER
                 }
             ],
             menus: {
@@ -828,6 +896,15 @@ class Scratch3PoweredUpBlocks {
                 TILT_DIRECTION_ANY:
                     [TiltDirection.UP, TiltDirection.DOWN, TiltDirection.LEFT, TiltDirection.RIGHT, TiltDirection.ANY],
                 LED_COLOR: allColors,
+                SENSOR_COLOR: [
+                    Color.NONE,
+                    Color.BLACK,
+                    Color.BLUE,
+                    Color.LIGHTGREEN,
+                    Color.YELLOW,
+                    Color.RED,
+                    Color.WHITE
+                ],
                 OP: ['<', '>']
             }
         };
@@ -845,7 +922,7 @@ class Scratch3PoweredUpBlocks {
         durationMS = MathUtil.clamp(durationMS, 0, 15000);
         return new Promise(resolve => {
             this._forEachMotor(args.MOTOR_ID, motorIndex => {
-                const motor = this._device.motor(motorIndex);
+                const motor = this._peripheral.motor(motorIndex);
                 if (motor) {
                     motor.setMotorOnFor(durationMS);
                 }
@@ -861,7 +938,7 @@ class Scratch3PoweredUpBlocks {
         durationMS = MathUtil.clamp(durationMS, 0, 15000);
         return new Promise(resolve => {
             this._forEachMotor(args.MOTOR_ID, motorIndex => {
-                const motor = this._device.motor(motorIndex);
+                const motor = this._peripheral.motor(motorIndex);
                 if (motor) {
                     motor.power = MathUtil.clamp(Cast.toNumber(args.POWER), -100, 100);
                     motor.setMotorOnFor(durationMS);
@@ -881,7 +958,7 @@ class Scratch3PoweredUpBlocks {
      */
     motorOn (args) {
         this._forEachMotor(args.MOTOR_ID, motorIndex => {
-            const motor = this._device.motor(motorIndex);
+            const motor = this._peripheral.motor(motorIndex);
             if (motor) {
                 motor.setMotorOn();
             }
@@ -902,7 +979,7 @@ class Scratch3PoweredUpBlocks {
      */
     motorOff (args) {
         this._forEachMotor(args.MOTOR_ID, motorIndex => {
-            const motor = this._device.motor(motorIndex);
+            const motor = this._peripheral.motor(motorIndex);
             if (motor) {
                 motor.setMotorOff();
             }
@@ -924,7 +1001,7 @@ class Scratch3PoweredUpBlocks {
      */
     startMotorPower (args) {
         this._forEachMotor(args.MOTOR_ID, motorIndex => {
-            const motor = this._device.motor(motorIndex);
+            const motor = this._peripheral.motor(motorIndex);
             if (motor) {
                 motor.power = MathUtil.clamp(Cast.toNumber(args.POWER), -100, 100);
                 motor.setMotorOn();
@@ -948,7 +1025,7 @@ class Scratch3PoweredUpBlocks {
      */
     setMotorDirection (args) {
         this._forEachMotor(args.MOTOR_ID, motorIndex => {
-            const motor = this._device.motor(motorIndex);
+            const motor = this._peripheral.motor(motorIndex);
             if (motor) {
                 switch (args.MOTOR_DIRECTION) {
                 case MotorDirection.FORWARD:
@@ -983,7 +1060,7 @@ class Scratch3PoweredUpBlocks {
     }
 
     setLEDColor (args) {
-        this._device.setLED(args.LED_COLOR);
+        this._peripheral.setLED(args.LED_COLOR);
 
         return new Promise(resolve => {
             window.setTimeout(() => {
@@ -1003,10 +1080,10 @@ class Scratch3PoweredUpBlocks {
         switch (args.OP) {
         case '<':
         case '&lt;':
-            return this._device.distance < Cast.toNumber(args.REFERENCE);
+            return this._peripheral.distance < Cast.toNumber(args.REFERENCE);
         case '>':
         case '&gt;':
-            return this._device.distance > Cast.toNumber(args.REFERENCE);
+            return this._peripheral.distance > Cast.toNumber(args.REFERENCE);
         default:
             log.warn(`Unknown comparison operator in whenDistance: ${args.OP}`);
             return false;
@@ -1024,10 +1101,26 @@ class Scratch3PoweredUpBlocks {
     }
 
     /**
-     * @return {number} - the distance sensor's value, scaled to the [0,100] range.
+     * @return {number} - the distance sensor's value, scaled to the [0,10] range.
      */
     getDistance () {
-        return this._device.distance;
+        return this._peripheral.distance;
+    }
+
+    whenColor (args) {
+        return this._isColor(args.SENSOR_COLOR);
+    }
+
+    isColor (args) {
+        return this._isColor(args.SENSOR_COLOR);
+    }
+
+    getColor () {
+        let color = allColors[this._peripheral.color];
+        if (color == null) {
+            return Color.NONE;
+        }
+        return color;
     }
 
     /**
@@ -1059,13 +1152,24 @@ class Scratch3PoweredUpBlocks {
     _isTilted (direction) {
         switch (direction) {
         case TiltDirection.ANY:
-            return (Math.abs(this._device.tiltX) >= Scratch3PoweredUpBlocks.TILT_THRESHOLD) ||
-                (Math.abs(this._device.tiltY) >= Scratch3PoweredUpBlocks.TILT_THRESHOLD);
+            return (Math.abs(this._peripheral.tiltX) >= Scratch3PoweredUpBlocks.TILT_THRESHOLD) ||
+                (Math.abs(this._peripheral.tiltY) >= Scratch3PoweredUpBlocks.TILT_THRESHOLD);
         default:
             return this._getTiltAngle(direction) >= Scratch3PoweredUpBlocks.TILT_THRESHOLD;
         }
     }
 
+    _isColor (color) {
+        let index = allColors.indexOf(color);
+        if (index < 0) {
+            if (color == Color.NONE) {
+                index == -1;
+            } else {
+                return false;
+            }
+        }
+        return this._peripheral.color == index;
+    }
     /**
      * @param {TiltDirection} direction - the direction (up, down, left, right) to check.
      * @return {number} - the tilt sensor's angle in the specified direction.
@@ -1075,13 +1179,13 @@ class Scratch3PoweredUpBlocks {
     _getTiltAngle (direction) {
         switch (direction) {
         case TiltDirection.UP:
-            return this._device.tiltY > 45 ? 256 - this._device.tiltY : -this._device.tiltY;
+            return this._peripheral.tiltY > 45 ? 256 - this._peripheral.tiltY : -this._peripheral.tiltY;
         case TiltDirection.DOWN:
-            return this._device.tiltY > 45 ? this._device.tiltY - 256 : this._device.tiltY;
+            return this._peripheral.tiltY > 45 ? this._peripheral.tiltY - 256 : this._peripheral.tiltY;
         case TiltDirection.LEFT:
-            return this._device.tiltX > 45 ? 256 - this._device.tiltX : -this._device.tiltX;
+            return this._peripheral.tiltX > 45 ? 256 - this._peripheral.tiltX : -this._peripheral.tiltX;
         case TiltDirection.RIGHT:
-            return this._device.tiltX > 45 ? this._device.tiltX - 256 : this._device.tiltX;
+            return this._peripheral.tiltX > 45 ? this._peripheral.tiltX - 256 : this._peripheral.tiltX;
         default:
             log.warn(`Unknown tilt direction in _getTiltAngle: ${direction}`);
         }

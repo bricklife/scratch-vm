@@ -1,42 +1,44 @@
 {
-  "name": "scratch-vm",
-  "version": "0.2.0",
-  "description": "Virtual Machine for Scratch 3.0",
-  "author": "Massachusetts Institute of Technology",
-  "license": "BSD-3-Clause",
-  "homepage": "https://github.com/LLK/scratch-vm#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/LLK/scratch-vm.git"
+  "_from": "scratch-vm@0.2.0-prerelease.20180925190229",
+  "_id": "scratch-vm@0.2.0-prerelease.20180925190229",
+  "_inBundle": false,
+  "_integrity": "sha512-v8YC50QQKJSGRBgBuTr4x3QytRD2wLC0PnKlwDdH1Xrl50LMZKN7sWxxpDznxcRSWbfWIjC7cB6piYIcChAeKg==",
+  "_location": "/scratch-vm",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "version",
+    "registry": true,
+    "raw": "scratch-vm@0.2.0-prerelease.20180925190229",
+    "name": "scratch-vm",
+    "escapedName": "scratch-vm",
+    "rawSpec": "0.2.0-prerelease.20180925190229",
+    "saveSpec": null,
+    "fetchSpec": "0.2.0-prerelease.20180925190229"
   },
-  "main": "./dist/node/scratch-vm.js",
+  "_requiredBy": [
+    "#DEV:/"
+  ],
+  "_resolved": "https://registry.npmjs.org/scratch-vm/-/scratch-vm-0.2.0-prerelease.20180925190229.tgz",
+  "_shasum": "23071fc696162acf302bced4a792e7fe394e0c8d",
+  "_spec": "scratch-vm@0.2.0-prerelease.20180925190229",
+  "_where": "/Users/ooba/Downloads/scratch-gui-develop",
+  "author": {
+    "name": "Massachusetts Institute of Technology"
+  },
   "browser": "./src/index.js",
-  "scripts": {
-    "build": "npm run docs && webpack --progress --colors --bail",
-    "coverage": "tap ./test/{unit,integration}/*.js --coverage --coverage-report=lcov",
-    "deploy": "touch playground/.nojekyll && gh-pages -t -d playground -m \"Build for $(git log --pretty=format:%H -n1)\"",
-    "docs": "jsdoc -c .jsdoc.json",
-    "extract:core": "mkdirp translations/core && format-message extract --out-file translations/core/en.json src/extensions/**/index.js",
-    "i18n:src": "npm run extract:core",
-    "lint": "eslint . && format-message lint src/**/*.js",
-    "prepublish": "in-publish && npm run build || not-in-publish",
-    "start": "webpack-dev-server",
-    "tap": "tap ./test/{unit,integration}/*.js",
-    "tap:unit": "tap ./test/unit/*.js",
-    "tap:integration": "tap ./test/integration/*.js",
-    "test": "npm run lint && npm run docs && npm run tap",
-    "watch": "webpack --progress --colors --watch",
-    "version": "json -f package.json -I -e \"this.repository.sha = '$(git log -n1 --pretty=format:%H)'\""
+  "bugs": {
+    "url": "https://github.com/LLK/scratch-vm/issues"
   },
+  "bundleDependencies": false,
   "dependencies": {
     "arraybuffer-loader": "^1.0.6",
     "atob": "2.1.2",
     "btoa": "1.2.1",
     "canvas-toBlob": "1.0.0",
     "decode-html": "2.0.0",
-    "diff-match-patch": "1.0.0",
+    "diff-match-patch": "1.0.4",
     "escape-html": "1.0.3",
-    "format-message": "6.1.0",
+    "format-message": "6.2.0",
     "htmlparser2": "3.9.2",
     "immutable": "3.8.1",
     "jszip": "^3.1.5",
@@ -48,6 +50,8 @@
     "text-encoding": "0.6.4",
     "worker-loader": "^1.1.1"
   },
+  "deprecated": false,
+  "description": "Virtual Machine for Scratch 3.0",
   "devDependencies": {
     "adm-zip": "0.4.11",
     "babel-core": "^6.24.1",
@@ -60,7 +64,7 @@
     "eslint-config-scratch": "^5.0.0",
     "expose-loader": "0.7.5",
     "file-loader": "^1.1.6",
-    "format-message-cli": "6.1.0",
+    "format-message-cli": "6.2.0",
     "gh-pages": "^1.2.0",
     "in-publish": "^2.0.0",
     "jsdoc": "^3.5.5",
@@ -79,5 +83,32 @@
     "webpack": "^4.16.5",
     "webpack-cli": "^3.1.0",
     "webpack-dev-server": "^3.1.5"
-  }
+  },
+  "homepage": "https://github.com/LLK/scratch-vm#readme",
+  "license": "BSD-3-Clause",
+  "main": "./dist/node/scratch-vm.js",
+  "name": "scratch-vm",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/LLK/scratch-vm.git",
+    "sha": "fa0af58c416fb89fec0a3dd499dbcec844ca4757"
+  },
+  "scripts": {
+    "build": "npm run docs && webpack --progress --colors --bail",
+    "coverage": "tap ./test/{unit,integration}/*.js --coverage --coverage-report=lcov",
+    "deploy": "touch playground/.nojekyll && gh-pages -t -d playground -m \"Build for $(git log --pretty=format:%H -n1)\"",
+    "docs": "jsdoc -c .jsdoc.json",
+    "extract:core": "mkdirp translations/core && format-message extract --out-file translations/core/en.json src/extensions/**/index.js",
+    "i18n:src": "npm run extract:core",
+    "lint": "eslint . && format-message lint src/**/*.js",
+    "prepublish": "in-publish && npm run build || not-in-publish",
+    "start": "webpack-dev-server",
+    "tap": "tap ./test/{unit,integration}/*.js",
+    "tap:integration": "tap ./test/integration/*.js",
+    "tap:unit": "tap ./test/unit/*.js",
+    "test": "npm run lint && npm run docs && npm run tap",
+    "version": "json -f package.json -I -e \"this.repository.sha = '$(git log -n1 --pretty=format:%H)'\"",
+    "watch": "webpack --progress --colors --watch"
+  },
+  "version": "0.2.0-prerelease.20180925190229"
 }
