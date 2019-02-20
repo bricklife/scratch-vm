@@ -9,6 +9,7 @@ const BlockType = require('./block-type');
 // TODO: change extension spec so that library info, including extension ID, can be collected through static methods
 const Scratch3PenBlocks = require('../extensions/scratch3_pen');
 const Scratch3WeDo2Blocks = require('../extensions/scratch3_wedo2');
+const Scratch3PoweredUpBlocks = require('../extensions/scratch3_powered_up');
 const Scratch3MusicBlocks = require('../extensions/scratch3_music');
 const Scratch3MicroBitBlocks = require('../extensions/scratch3_microbit');
 const Scratch3Text2SpeechBlocks = require('../extensions/scratch3_text2speech');
@@ -24,6 +25,7 @@ const Scratch3MakeyMakeyBlocks = require('../extensions/scratch3_makeymakey');
 const builtinExtensions = {
     pen: Scratch3PenBlocks,
     wedo2: Scratch3WeDo2Blocks,
+    poweredUp: Scratch3PoweredUpBlocks,
     music: Scratch3MusicBlocks,
     microbit: Scratch3MicroBitBlocks,
     text2speech: Scratch3Text2SpeechBlocks,
