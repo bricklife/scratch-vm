@@ -354,6 +354,7 @@ class DuploTrain {
          */
         this._rateLimiter = new RateLimiter(BLESendRateMax);
 
+        this.reset = this.reset.bind(this);
         this._onConnect = this._onConnect.bind(this);
         this._onMessage = this._onMessage.bind(this);
     }
@@ -447,11 +448,14 @@ class DuploTrain {
      * Called by the runtime when user wants to scan for a device.
      */
     scan () {
+        if (this._ble) {
+            this._ble.disconnect();
+        }
         this._ble = new BLE(this._runtime, this._extensionId, {
             filters: [{
                 services: [UUID.DEVICE_SERVICE]
             }]
-        }, this._onConnect);
+        }, this._onConnect, this.reset);
     }
 
     /**
@@ -466,13 +470,22 @@ class DuploTrain {
      * Disconnects from the current BLE session.
      */
     disconnect () {
+        if (this._ble) {
+            this._ble.disconnect();
+        }
+
+        this.reset();
+    }
+
+    /**
+     * Reset all the state and timeout/interval ids.
+     */
+    reset () {
         this._ports = {};
         this._motors = [null, null];
         this._sensors = {
             color: -1
         };
-
-        this._ble.disconnect();
     }
 
     /**
