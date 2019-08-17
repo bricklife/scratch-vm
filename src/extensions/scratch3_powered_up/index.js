@@ -358,6 +358,7 @@ class PoweredUp {
          */
         this._rateLimiter = new RateLimiter(BLESendRateMax);
 
+        this.reset = this.reset.bind(this);
         this._onConnect = this._onConnect.bind(this);
         this._onMessage = this._onMessage.bind(this);
     }
@@ -436,11 +437,14 @@ class PoweredUp {
      * Called by the runtime when user wants to scan for a device.
      */
     scan () {
+        if (this._ble) {
+            this._ble.disconnect();
+        }
         this._ble = new BLE(this._runtime, this._extensionId, {
             filters: [{
                 services: [UUID.DEVICE_SERVICE]
             }]
-        }, this._onConnect);
+        }, this._onConnect, this.reset);
     }
 
     /**
@@ -455,6 +459,17 @@ class PoweredUp {
      * Disconnects from the current BLE session.
      */
     disconnect () {
+        if (this._ble) {
+            this._ble.disconnect();
+        }
+
+        this.reset();
+    }
+
+    /**
+     * Reset all the state and timeout/interval ids.
+     */
+    reset () {
         this._ports = {};
         this._motors = [null, null];
         this._sensors = {
@@ -463,8 +478,6 @@ class PoweredUp {
             distance: 0,
             color: -1
         };
-
-        this._ble.disconnect();
     }
 
     /**
@@ -890,22 +903,61 @@ class Scratch3PoweredUpBlocks {
                 }
             ],
             menus: {
-                MOTOR_ID: [MotorID.A, MotorID.B, MotorID.ALL],
-                MOTOR_DIRECTION: [MotorDirection.FORWARD, MotorDirection.BACKWARD, MotorDirection.REVERSE],
-                TILT_DIRECTION: [TiltDirection.UP, TiltDirection.DOWN, TiltDirection.LEFT, TiltDirection.RIGHT],
-                TILT_DIRECTION_ANY:
-                    [TiltDirection.UP, TiltDirection.DOWN, TiltDirection.LEFT, TiltDirection.RIGHT, TiltDirection.ANY],
-                LED_COLOR: allColors,
-                SENSOR_COLOR: [
-                    Color.NONE,
-                    Color.BLACK,
-                    Color.BLUE,
-                    Color.LIGHTGREEN,
-                    Color.YELLOW,
-                    Color.RED,
-                    Color.WHITE
-                ],
-                OP: ['<', '>']
+                MOTOR_ID: {
+                    acceptReporters: true,
+                    items: [
+			MotorID.A,
+			MotorID.B,
+			MotorID.ALL
+		    ]
+		},
+                MOTOR_DIRECTION: {
+                    acceptReporters: true,
+                    items: [
+			MotorDirection.FORWARD,
+			MotorDirection.BACKWARD,
+			MotorDirection.REVERSE
+		    ]
+		},
+                TILT_DIRECTION: {
+                    acceptReporters: true,
+                    items: [
+			TiltDirection.UP,
+			TiltDirection.DOWN,
+			TiltDirection.LEFT,
+			TiltDirection.RIGHT
+		    ]
+		},
+                TILT_DIRECTION_ANY: {
+                    acceptReporters: true,
+                    items: [
+			TiltDirection.UP,
+			TiltDirection.DOWN,
+			TiltDirection.LEFT,
+			TiltDirection.RIGHT,
+			TiltDirection.ANY
+		    ]
+		},
+                LED_COLOR: {
+                    acceptReporters: true,
+                    items: allColors
+		},
+                SENSOR_COLOR: {
+                    acceptReporters: true,
+                    items: [
+			Color.NONE,
+			Color.BLACK,
+			Color.BLUE,
+			Color.LIGHTGREEN,
+			Color.YELLOW,
+			Color.RED,
+			Color.WHITE
+                    ]
+		},
+                OP: {
+                    acceptReporters: true,
+                    items: ['<', '>']
+		}
             }
         };
     }
