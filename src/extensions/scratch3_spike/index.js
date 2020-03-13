@@ -964,6 +964,21 @@ class Scratch3SpikeBlocks {
             showStatusButton: true,
             blocks: [
                 {
+                    opcode: 'displayImage',
+                    text: formatMessage({
+                        id: 'spike.displayImage',
+                        default: 'turn on [MATRIX]',
+                        description: 'display a pattern on the SPIKE HUb display'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        MATRIX: {
+                            type: ArgumentType.MATRIX,
+                            defaultValue: '1101111011000001000101110'
+                        }
+                    }
+                },
+                {
                     opcode: 'motorTurnClockwise',
                     text: formatMessage({
                         id: 'spike.motorTurnClockwise',
@@ -1150,6 +1165,23 @@ class Scratch3SpikeBlocks {
                 }
             }
         };
+    }
+
+    displayImage (args) {
+        const symbol = Cast.toString(args.MATRIX).replace(/\s/g, '').replace(/1/g, '9').match(/.{5}/g).join(':');
+
+        const text = JSON.stringify({
+            "i": "AAAA",
+            "m": "scratch.display_image",
+            "p": {"image": symbol}
+        }) + "\r";
+
+        const output = new Uint8Array(text.length);
+        for (let i = 0; i < text.length; i++) {
+            output[i] = text.charCodeAt(i);
+        }
+        
+        this._peripheral.send(output);
     }
 
     motorTurnClockwise (args) {
