@@ -143,6 +143,16 @@ const Ev3Label = {
     ultrasonic: 'distance'
 };
 
+const SpikeOrientation = {
+    any: 0,
+    front: 1,
+    back: 2,
+    up: 3,
+    down: 4,
+    rightside: 5,
+    leftside: 6
+};
+
 /**
  * Manage power, direction, and timers for one EV3 motor.
  */
@@ -468,7 +478,8 @@ class Spike {
         this._sensors = {
             distance: 0,
             brightness: 0,
-            buttons: [0, 0, 0, 0]
+            buttons: [0, 0, 0, 0],
+            orientation: null
         };
 
         /**
@@ -531,6 +542,10 @@ class Spike {
 
     get brightness() {
         return this._sensors.brightness;
+    }
+
+    get orientation() {
+        return this._sensors.orientation;
     }
 
     /**
@@ -636,7 +651,8 @@ class Spike {
         this._sensors = {
             distance: 0,
             brightness: 0,
-            buttons: [0, 0, 0, 0]
+            buttons: [0, 0, 0, 0],
+            orientation: null
         };
         this._motors = [null, null, null, null];
 
@@ -850,8 +866,40 @@ class Spike {
             if (json.m != 0 || json.i != null) {
                 console.log('< ' + text);
             }
+            this.parseResponse(json);
         } catch (error) {
             console.log(text);
+        }
+    }
+
+    parseResponse(response) {
+        if (response.m != null) {
+            switch (response.m) {
+                case 0:
+                    // Hub
+                    // {"m":0,"p":[[0, []], [48, [0, 0, -163, 0]], [0, []], [49, [0, 0, -97, 0]], [0, []], [63, [0, 0, 380]], [-1019, 8, -33], [1, 2, -2], [8, 90, 0], "99999:00009:99909:00909:90909", 421304]}
+                    break;
+                case 1:
+                    // Strage
+                    // {"m":1,"p":{"storage": {"available": 31056, "total": 31744, "pct": 3.16734, "unit": "kb", "free": 31056}, "slots": {"1": {"created": 1579238598349, "id": 5626, "size": 2778, "modified": 1579240679453, "name": "Report Test"}, "0": {"created": 1579137873835, "id": 22622, "size": 3010, "modified": 1579236837793, "name": "Key Code"}}}}
+                    break;
+                case 2:
+                    // Battery
+                    // {"m":2,"p":[8.316, 100]}
+                    break;
+                case 3:
+                    // Button
+                    // {"m":3,"p":["right", 0]}
+                    break;
+                case 4:
+                    // Event (Orientation, Gesture)
+                    if (SpikeOrientation[response.p]) {
+                        this._sensors.orientation = SpikeOrientation[response.p];
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }
@@ -926,6 +974,16 @@ class Scratch3SpikeBlocks {
                             defaultValue: '1101111011000001000101110'
                         }
                     }
+                },
+                '---',
+                {
+                    opcode: 'getOrientation',
+                    text: formatMessage({
+                        id: 'spike.getOrientation',
+                        default: 'orientation',
+                        description: 'the orientation returned by the tilt sensor'
+                    }),
+                    blockType: BlockType.REPORTER
                 }
             ],
             menus: {
@@ -952,6 +1010,10 @@ class Scratch3SpikeBlocks {
                 "image": image
             }
         });
+    }
+
+    getOrientation() {
+        return this._peripheral.orientation;
     }
 
     motorTurnClockwise(args) {
