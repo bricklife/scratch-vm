@@ -156,7 +156,7 @@ class EV3Motor {
      * @param {int} index - the zero-based index of this motor on its parent peripheral.
      * @param {string} type - the type of motor (i.e. 'largeMotor' or 'mediumMotor').
      */
-    constructor (parent, index, type) {
+    constructor(parent, index, type) {
         /**
          * The EV3 peripheral which owns this motor.
          * @type {EV3}
@@ -219,28 +219,28 @@ class EV3Motor {
     /**
      * @return {string} - this motor's type: 'largeMotor' or 'mediumMotor'
      */
-    get type () {
+    get type() {
         return this._type;
     }
 
     /**
      * @param {string} value - this motor's new type: 'largeMotor' or 'mediumMotor'
      */
-    set type (value) {
+    set type(value) {
         this._type = value;
     }
 
     /**
      * @return {int} - this motor's current direction: 1 for "clockwise" or -1 for "counterclockwise"
      */
-    get direction () {
+    get direction() {
         return this._direction;
     }
 
     /**
      * @param {int} value - this motor's new direction: 1 for "clockwise" or -1 for "counterclockwise"
      */
-    set direction (value) {
+    set direction(value) {
         if (value < 0) {
             this._direction = -1;
         } else {
@@ -251,28 +251,28 @@ class EV3Motor {
     /**
      * @return {int} - this motor's current power level, in the range [0,100].
      */
-    get power () {
+    get power() {
         return this._power;
     }
 
     /**
      * @param {int} value - this motor's new power level, in the range [0,100].
      */
-    set power (value) {
+    set power(value) {
         this._power = value;
     }
 
     /**
      * @return {int} - this motor's current position, in the range [-inf,inf].
      */
-    get position () {
+    get position() {
         return this._position;
     }
 
     /**
      * @param {int} array - this motor's new position, in the range [0,360].
      */
-    set position (array) {
+    set position(array) {
         // tachoValue from Paula
         let value = array[0] + (array[1] * 256) + (array[2] * 256 * 256) + (array[3] * 256 * 256 * 256);
         if (value > 0x7fffffff) {
@@ -297,7 +297,7 @@ class EV3Motor {
      *
      * @param {number} milliseconds - run the motor for this long.
      */
-    turnOnFor (milliseconds) {
+    turnOnFor(milliseconds) {
         if (this._power === 0) return;
 
         const port = this._portMask(this._index);
@@ -355,7 +355,7 @@ class EV3Motor {
      * Set the motor to coast after a specified amount of time.
      * @param {number} time - the time in milliseconds.
      */
-    coastAfter (time) {
+    coastAfter(time) {
         if (this._power === 0) return;
 
         // Set the motor command id to check before starting coast
@@ -375,7 +375,7 @@ class EV3Motor {
     /**
      * Set the motor to coast.
      */
-    coast () {
+    coast() {
         if (this._power === 0) return;
 
         const cmd = this._parent.generateCommand(
@@ -396,7 +396,7 @@ class EV3Motor {
      * @param  {number} run - run input.
      * @return {array} - run values as a byte array.
      */
-    _runValues (run) {
+    _runValues(run) {
         // If run duration is less than max 16-bit integer
         if (run < 0x7fff) {
             return [
@@ -424,14 +424,14 @@ class EV3Motor {
      * @param {number} port - the port number to convert to an 'output bit field'.
      * @return {number} - the converted port number.
      */
-    _portMask (port) {
+    _portMask(port) {
         return Math.pow(2, port);
     }
 }
 
 class Spike {
 
-    constructor (runtime, extensionId) {
+    constructor(runtime, extensionId) {
 
         /**
          * The Scratch 3.0 runtime used to trigger the green flag button.
@@ -521,7 +521,7 @@ class Spike {
         this._pollValues = this._pollValues.bind(this);
     }
 
-    get distance () {
+    get distance() {
         let value = this._sensors.distance > 100 ? 100 : this._sensors.distance;
         value = value < 0 ? 0 : value;
         value = Math.round(100 * value) / 100;
@@ -529,7 +529,7 @@ class Spike {
         return value;
     }
 
-    get brightness () {
+    get brightness() {
         return this._sensors.brightness;
     }
 
@@ -538,15 +538,15 @@ class Spike {
      * @param {int} index - the zero-based index of the desired motor.
      * @return {EV3Motor} - the EV3Motor instance, if any, at that index.
      */
-    motor (index) {
+    motor(index) {
         return this._motors[index];
     }
 
-    isButtonPressed (port) {
+    isButtonPressed(port) {
         return this._sensors.buttons[port] === 1;
     }
 
-    beep (freq, time) {
+    beep(freq, time) {
         const cmd = this.generateCommand(
             Ev3Command.DIRECT_COMMAND_NO_REPLY,
             [
@@ -566,12 +566,12 @@ class Spike {
         this.send(cmd);
     }
 
-    stopAll () {
+    stopAll() {
         this.stopAllMotors();
         this.stopSound();
     }
 
-    stopSound () {
+    stopSound() {
         const cmd = this.generateCommand(
             Ev3Command.DIRECT_COMMAND_NO_REPLY,
             [
@@ -583,7 +583,7 @@ class Spike {
         this.send(cmd, false); // don't use rate limiter to ensure sound stops
     }
 
-    stopAllMotors () {
+    stopAllMotors() {
         this._motors.forEach(motor => {
             if (motor) {
                 motor.coast();
@@ -594,7 +594,7 @@ class Spike {
     /**
      * Called by the runtime when user wants to scan for an EV3 peripheral.
      */
-    scan () {
+    scan() {
         if (this._bt) {
             this._bt.disconnect();
         }
@@ -608,7 +608,7 @@ class Spike {
      * Called by the runtime when user wants to connect to a certain EV3 peripheral.
      * @param {number} id - the id of the peripheral to connect to.
      */
-    connect (id) {
+    connect(id) {
         if (this._bt) {
             this._bt.connectPeripheral(id);
         }
@@ -617,7 +617,7 @@ class Spike {
     /**
      * Called by the runtime when user wants to disconnect from the EV3 peripheral.
      */
-    disconnect () {
+    disconnect() {
         if (this._bt) {
             this._bt.disconnect();
         }
@@ -628,7 +628,7 @@ class Spike {
     /**
      * Reset all the state and timeout/interval ids.
      */
-    reset () {
+    reset() {
         this._sensorPorts = [];
         this._motorPorts = [];
         this._sensors = {
@@ -648,7 +648,7 @@ class Spike {
      * Called by the runtime to detect whether the EV3 peripheral is connected.
      * @return {boolean} - the connected state.
      */
-    isConnected () {
+    isConnected() {
         let connected = false;
         if (this._bt) {
             connected = this._bt.isConnected();
@@ -662,7 +662,7 @@ class Spike {
      * @param {boolean} [useLimiter=true] - if true, use the rate limiter
      * @return {Promise} - a promise result of the send operation.
      */
-    send (message, useLimiter = true) {
+    send(message, useLimiter = true) {
         if (!this.isConnected()) return Promise.resolve();
 
         if (useLimiter) {
@@ -675,7 +675,7 @@ class Spike {
         });
     }
 
-    sendJSON (json, useLimiter = true) {
+    sendJSON(json, useLimiter = true) {
         const text = JSON.stringify(json) + '\r';
         console.log(text);
 
@@ -712,7 +712,7 @@ class Spike {
      * @param {number} allocation - the allocation of global and local vars needed for replies.
      * @return {array} - generated complete command byte array, with header and compounded commands.
      */
-    generateCommand (type, byteCommands, allocation = 0) {
+    generateCommand(type, byteCommands, allocation = 0) {
 
         // Header (Bytes 0 - 6)
         let command = [];
@@ -737,7 +737,7 @@ class Spike {
      * When the EV3 peripheral connects, start polling for sensor and motor values.
      * @private
      */
-    _onConnect () {
+    _onConnect() {
     }
 
     /**
@@ -751,7 +751,7 @@ class Spike {
      *
      * @private
      */
-    _pollValues () {
+    _pollValues() {
         if (!this.isConnected()) {
             window.clearInterval(this._pollingIntervalID);
             return;
@@ -841,7 +841,7 @@ class Spike {
      * @param {object} params - incoming message parameters
      * @private
      */
-    _onMessage (params) {
+    _onMessage(params) {
         const message = params.message;
         const data = Base64Util.base64ToUint8Array(message);
 
@@ -875,7 +875,7 @@ class Spike {
             }
             this._updateDevices = false;
 
-        // eslint-disable-next-line no-undefined
+            // eslint-disable-next-line no-undefined
         } else if (!this._sensorPorts.includes(undefined) && !this._motorPorts.includes(undefined)) {
 
             // PARSE SENSOR VALUES
@@ -941,7 +941,7 @@ class Scratch3SpikeBlocks {
      * The ID of the extension.
      * @return {string} the id
      */
-    static get EXTENSION_ID () {
+    static get EXTENSION_ID() {
         return 'spike';
     }
 
@@ -950,7 +950,7 @@ class Scratch3SpikeBlocks {
      * @param  {object} runtime VM runtime
      * @constructor
      */
-    constructor (runtime) {
+    constructor(runtime) {
         /**
          * The Scratch 3.0 runtime.
          * @type {Runtime}
@@ -968,7 +968,7 @@ class Scratch3SpikeBlocks {
      * Define the EV3 extension.
      * @return {object} Extension description.
      */
-    getInfo () {
+    getInfo() {
         return {
             id: Scratch3SpikeBlocks.EXTENSION_ID,
             name: 'LEGO SPIKE Prime',
@@ -1179,18 +1179,20 @@ class Scratch3SpikeBlocks {
         };
     }
 
-    displayImage (args) {
+    displayImage(args) {
         const symbol = (Cast.toString(args.MATRIX).replace(/\D/g, '') + '0'.repeat(25)).slice(0, 25);
         const image = symbol.replace(/1/g, '9').match(/.{5}/g).join(':');
 
         this._peripheral.sendJSON({
             "i": "AAAA",
             "m": "scratch.display_image",
-            "p": {"image": image}
+            "p": {
+                "image": image
+            }
         });
     }
 
-    motorTurnClockwise (args) {
+    motorTurnClockwise(args) {
         const port = Cast.toNumber(args.PORT);
         let time = Cast.toNumber(args.TIME) * 1000;
         time = MathUtil.clamp(time, 0, 15000);
@@ -1209,7 +1211,7 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    motorTurnCounterClockwise (args) {
+    motorTurnCounterClockwise(args) {
         const port = Cast.toNumber(args.PORT);
         let time = Cast.toNumber(args.TIME) * 1000;
         time = MathUtil.clamp(time, 0, 15000);
@@ -1228,7 +1230,7 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    motorSetPower (args) {
+    motorSetPower(args) {
         const port = Cast.toNumber(args.PORT);
         const power = MathUtil.clamp(Cast.toNumber(args.POWER), 0, 100);
 
@@ -1240,7 +1242,7 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    getMotorPosition (args) {
+    getMotorPosition(args) {
         const port = Cast.toNumber(args.PORT);
 
         if (![0, 1, 2, 3].includes(port)) {
@@ -1256,7 +1258,7 @@ class Scratch3SpikeBlocks {
         return position;
     }
 
-    whenButtonPressed (args) {
+    whenButtonPressed(args) {
         const port = Cast.toNumber(args.PORT);
 
         if (![0, 1, 2, 3].includes(port)) {
@@ -1266,19 +1268,19 @@ class Scratch3SpikeBlocks {
         return this._peripheral.isButtonPressed(port);
     }
 
-    whenDistanceLessThan (args) {
+    whenDistanceLessThan(args) {
         const distance = MathUtil.clamp(Cast.toNumber(args.DISTANCE), 0, 100);
 
         return this._peripheral.distance < distance;
     }
 
-    whenBrightnessLessThan (args) {
+    whenBrightnessLessThan(args) {
         const brightness = MathUtil.clamp(Cast.toNumber(args.DISTANCE), 0, 100);
 
         return this._peripheral.brightness < brightness;
     }
 
-    buttonPressed (args) {
+    buttonPressed(args) {
         const port = Cast.toNumber(args.PORT);
 
         if (![0, 1, 2, 3].includes(port)) {
@@ -1288,15 +1290,15 @@ class Scratch3SpikeBlocks {
         return this._peripheral.isButtonPressed(port);
     }
 
-    getDistance () {
+    getDistance() {
         return this._peripheral.distance;
     }
 
-    getBrightness () {
+    getBrightness() {
         return this._peripheral.brightness;
     }
 
-    _playNoteForPicker (note, category) {
+    _playNoteForPicker(note, category) {
         if (category !== this.getInfo().name) return;
         this.beep({
             NOTE: note,
@@ -1304,7 +1306,7 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    beep (args) {
+    beep(args) {
         const note = MathUtil.clamp(Cast.toNumber(args.NOTE), 47, 99); // valid EV3 sounds
         let time = Cast.toNumber(args.TIME) * 1000;
         time = MathUtil.clamp(time, 0, 3000);
@@ -1333,25 +1335,25 @@ class Scratch3SpikeBlocks {
      * @param {Function} callback - the function to call with the numeric motor index for each motor.
      * @private
      */
-    _forEachMotor (motorID, callback) {
+    _forEachMotor(motorID, callback) {
         let motors;
         switch (motorID) {
-        case 0:
-            motors = [0];
-            break;
-        case 1:
-            motors = [1];
-            break;
-        case 2:
-            motors = [2];
-            break;
-        case 3:
-            motors = [3];
-            break;
-        default:
-            log.warn(`Invalid motor ID: ${motorID}`);
-            motors = [];
-            break;
+            case 0:
+                motors = [0];
+                break;
+            case 1:
+                motors = [1];
+                break;
+            case 2:
+                motors = [2];
+                break;
+            case 3:
+                motors = [3];
+                break;
+            default:
+                log.warn(`Invalid motor ID: ${motorID}`);
+                motors = [];
+                break;
         }
         for (const index of motors) {
             callback(index);
@@ -1377,7 +1379,7 @@ class Scratch3SpikeBlocks {
      * @return {object} - a formatted menu as an object.
      * @private
      */
-    _formatMenu (menu) {
+    _formatMenu(menu) {
         const m = [];
         for (let i = 0; i < menu.length; i++) {
             const obj = {};
