@@ -567,8 +567,10 @@ class Spike {
     }
 
     stopAll() {
+        /*
         this.stopAllMotors();
         this.stopSound();
+        */
     }
 
     stopSound() {
