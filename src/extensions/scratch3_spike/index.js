@@ -675,6 +675,18 @@ class Spike {
         });
     }
 
+    sendJSON (json, useLimiter = true) {
+        const text = JSON.stringify(json) + '\r';
+        console.log(text);
+
+        const output = new Uint8Array(text.length);
+        for (let i = 0; i < text.length; i++) {
+            output[i] = text.charCodeAt(i);
+        }
+
+        this.send(output, useLimiter);
+    }
+
     /**
      * Genrates direct commands that are sent to the EV3 as a single or compounded byte arrays.
      * See 'EV3 Communication Developer Kit', section 4, page 24 at
@@ -1168,20 +1180,14 @@ class Scratch3SpikeBlocks {
     }
 
     displayImage (args) {
-        const symbol = Cast.toString(args.MATRIX).replace(/\s/g, '').replace(/1/g, '9').match(/.{5}/g).join(':');
+        const symbol = (Cast.toString(args.MATRIX).replace(/\D/g, '') + '0'.repeat(25)).slice(0, 25);
+        const image = symbol.replace(/1/g, '9').match(/.{5}/g).join(':');
 
-        const text = JSON.stringify({
+        this._peripheral.sendJSON({
             "i": "AAAA",
             "m": "scratch.display_image",
-            "p": {"image": symbol}
-        }) + "\r";
-
-        const output = new Uint8Array(text.length);
-        for (let i = 0; i < text.length; i++) {
-            output[i] = text.charCodeAt(i);
-        }
-        
-        this._peripheral.send(output);
+            "p": {"image": image}
+        });
     }
 
     motorTurnClockwise (args) {
