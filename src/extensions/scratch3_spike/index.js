@@ -679,7 +679,7 @@ class Spike {
 
     sendJSON(json, useLimiter = true) {
         const jsonText = JSON.stringify(json);
-        console.log(jsonText);
+        console.log('> ' + jsonText);
 
         const cmd = (new TextEncoder).encode(jsonText + '\r');
 
@@ -843,77 +843,15 @@ class Spike {
     _onMessage(params) {
         const message = params.message;
         const data = Base64Util.base64ToUint8Array(message);
+        const text = (new TextDecoder).decode(data);
 
-        if (data[4] !== Ev3Command.DIRECT_REPLY) {
-            return;
-        }
-
-        if (this._updateDevices) {
-
-            // PARSE DEVICE LIST
-            for (let i = 0; i < 4; i++) {
-                const deviceType = Ev3Device[data[i + 5]];
-                // if returned device type is null, use 'none'
-                this._sensorPorts[i] = deviceType ? deviceType : 'none';
+        try {
+            const json = JSON.parse(text);
+            if (json.m != 0 || json.i != null) {
+                console.log('< ' + text);
             }
-            for (let i = 0; i < 4; i++) {
-                const deviceType = Ev3Device[data[i + 21]];
-                // if returned device type is null, use 'none'
-                this._motorPorts[i] = deviceType ? deviceType : 'none';
-            }
-            for (let m = 0; m < 4; m++) {
-                const type = this._motorPorts[m];
-                if (type !== 'none' && !this._motors[m]) {
-                    // add new motor if don't already have one
-                    this._motors[m] = new EV3Motor(this, m, type);
-                }
-                if (type === 'none' && this._motors[m]) {
-                    // clear old motor
-                    this._motors[m] = null;
-                }
-            }
-            this._updateDevices = false;
-
-            // eslint-disable-next-line no-undefined
-        } else if (!this._sensorPorts.includes(undefined) && !this._motorPorts.includes(undefined)) {
-
-            // PARSE SENSOR VALUES
-            let offset = 5; // start reading sensor values at byte 5
-            for (let i = 0; i < 4; i++) {
-                // array 2 float
-                const buffer = new Uint8Array([
-                    data[offset],
-                    data[offset + 1],
-                    data[offset + 2],
-                    data[offset + 3]
-                ]).buffer;
-                const view = new DataView(buffer);
-                const value = view.getFloat32(0, true);
-
-                if (Ev3Label[this._sensorPorts[i]] === 'button') {
-                    // Read a button value per port
-                    this._sensors.buttons[i] = value ? value : 0;
-                } else if (Ev3Label[this._sensorPorts[i]]) { // if valid
-                    // Read brightness / distance values and set to 0 if null
-                    this._sensors[Ev3Label[this._sensorPorts[i]]] = value ? value : 0;
-                }
-                offset += 4;
-            }
-
-            // PARSE MOTOR POSITION VALUES, EVEN IF NO MOTOR PRESENT
-            for (let i = 0; i < 4; i++) {
-                const positionArray = [
-                    data[offset],
-                    data[offset + 1],
-                    data[offset + 2],
-                    data[offset + 3]
-                ];
-                if (this._motors[i]) {
-                    this._motors[i].position = positionArray;
-                }
-                offset += 4;
-            }
-
+        } catch (error) {
+            console.log(text);
         }
     }
 }
