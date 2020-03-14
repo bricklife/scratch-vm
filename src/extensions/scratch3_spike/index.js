@@ -1183,7 +1183,7 @@ class Scratch3SpikeBlocks {
         const image = symbol.replace(/1/g, '9').match(/.{5}/g).join(':');
 
         this._peripheral.sendJSON({
-            "i": "AAAA",
+            "i": Math.random().toString(36).slice(-4),
             "m": "scratch.display_image",
             "p": {
                 "image": image
