@@ -676,15 +676,12 @@ class Spike {
     }
 
     sendJSON(json, useLimiter = true) {
-        const text = JSON.stringify(json) + '\r';
-        console.log(text);
+        const jsonText = JSON.stringify(json);
+        console.log(jsonText);
 
-        const output = new Uint8Array(text.length);
-        for (let i = 0; i < text.length; i++) {
-            output[i] = text.charCodeAt(i);
-        }
+        const cmd = (new TextEncoder).encode(jsonText + '\r');
 
-        this.send(output, useLimiter);
+        this.send(cmd, useLimiter);
     }
 
     /**
