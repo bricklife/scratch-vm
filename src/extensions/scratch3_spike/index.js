@@ -681,6 +681,13 @@ class Spike {
      * @return {Promise} - a promise result of the send operation.
      */
     send(message, useLimiter = true) {
+        console.trace('Called send() function');
+    }
+
+    sendJSON(json, useLimiter = true) {
+        const jsonText = JSON.stringify(json);
+        console.log('> ' + jsonText);
+
         if (!this.isConnected()) return Promise.resolve();
 
         if (useLimiter) {
@@ -688,18 +695,8 @@ class Spike {
         }
 
         return this._bt.sendMessage({
-            message: Base64Util.uint8ArrayToBase64(message),
-            encoding: 'base64'
+            message: jsonText + '\r'
         });
-    }
-
-    sendJSON(json, useLimiter = true) {
-        const jsonText = JSON.stringify(json);
-        console.log('> ' + jsonText);
-
-        const cmd = (new TextEncoder).encode(jsonText + '\r');
-
-        this.send(cmd, useLimiter);
     }
 
     /**
