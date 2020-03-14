@@ -753,6 +753,10 @@ class Spike {
      * @private
      */
     _onConnect() {
+        this.sendJSON({
+            "m": "trigger_current_state",
+            "p": {}
+        });
     }
 
     /**
