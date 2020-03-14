@@ -860,13 +860,16 @@ class Spike {
         const message = params.message;
         const data = Base64Util.base64ToUint8Array(message);
         const text = (new TextDecoder).decode(data);
+        const responses = text.split('\r').filter(t => t.length > 0);
 
         try {
-            const json = JSON.parse(text);
-            if (json.m != 0 || json.i != null) {
-                console.log('< ' + text);
-            }
-            this.parseResponse(json);
+            responses.forEach((jsonText) => {
+                const json = JSON.parse(jsonText);
+                if (json.m != 0 || json.i != null) {
+                    console.log('< ' + jsonText);
+                }
+                this.parseResponse(json);
+            });
         } catch (error) {
             console.log(text);
         }
