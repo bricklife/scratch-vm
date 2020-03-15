@@ -1029,6 +1029,21 @@ class Scratch3SpikeBlocks {
                         }
                     }
                 },
+                {
+                    opcode: 'displayText',
+                    text: formatMessage({
+                        id: 'spike.displayText',
+                        default: 'write [TEXT]',
+                        description: 'display text on the SPIKE Hub display'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        TEXT: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'Hello'
+                        }
+                    }
+                },
                 '---',
                 {
                     opcode: 'getOrientation',
@@ -1071,6 +1086,14 @@ class Scratch3SpikeBlocks {
 
         return this._peripheral.sendCommand("scratch.display_image", {
             "image": image
+        });
+    }
+
+    displayText(args) {
+        const text = String(args.TEXT);
+
+        return this._peripheral.sendCommand("scratch.display_text", {
+            "text": text
         });
     }
 
