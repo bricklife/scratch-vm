@@ -1037,7 +1037,7 @@ class Scratch3SpikeBlocks {
         const symbol = (Cast.toString(args.MATRIX).replace(/\D/g, '') + '0'.repeat(25)).slice(0, 25);
         const image = symbol.replace(/1/g, '9').match(/.{5}/g).join(':');
         let duration = Cast.toNumber(args.DURATION) * 1000;
-        duration = MathUtil.clamp(duration, 0, 15000);
+        duration = MathUtil.clamp(duration, 0, 60000);
 
         const id = Math.random().toString(36).slice(-4);
 
