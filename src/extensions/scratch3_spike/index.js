@@ -1044,6 +1044,15 @@ class Scratch3SpikeBlocks {
                         }
                     }
                 },
+                {
+                    opcode: 'displayClear',
+                    text: formatMessage({
+                        id: 'spike.displayClear',
+                        default: 'turn off pixels',
+                        description: 'display nothing on the SPIKE Hub display'
+                    }),
+                    blockType: BlockType.COMMAND
+                },
                 '---',
                 {
                     opcode: 'getOrientation',
@@ -1095,6 +1104,10 @@ class Scratch3SpikeBlocks {
         return this._peripheral.sendCommand("scratch.display_text", {
             "text": text
         });
+    }
+
+    displayClear(args) {
+        return this._peripheral.sendCommand("scratch.display_clear", {});
     }
 
     getOrientation() {
