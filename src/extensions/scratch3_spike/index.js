@@ -1000,7 +1000,7 @@ class Scratch3SpikeBlocks {
                     text: formatMessage({
                         id: 'spike.displayImageFor',
                         default: 'turn on [MATRIX] for [DURATION] seconds',
-                        description: 'display a pattern on the SPIKE HUb display'
+                        description: 'display a pattern on the SPIKE Hub display'
                     }),
                     blockType: BlockType.COMMAND,
                     arguments: {
@@ -1019,7 +1019,7 @@ class Scratch3SpikeBlocks {
                     text: formatMessage({
                         id: 'spike.displayImage',
                         default: 'turn on [MATRIX]',
-                        description: 'display a pattern on the SPIKE HUb display'
+                        description: 'display a pattern on the SPIKE Hub display'
                     }),
                     blockType: BlockType.COMMAND,
                     arguments: {
