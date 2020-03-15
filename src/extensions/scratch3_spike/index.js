@@ -530,6 +530,8 @@ class Spike {
         this._onConnect = this._onConnect.bind(this);
         this._onMessage = this._onMessage.bind(this);
         this._pollValues = this._pollValues.bind(this);
+
+        this._openRequests = {};
     }
 
     get distance() {
@@ -905,6 +907,15 @@ class Spike {
                     break;
             }
         }
+
+        if (response.i != null) {
+            const openRequest = this._openRequests[response.i];
+            delete this._openRequests[response.i];
+
+            if (openRequest) {
+                openRequest.resolve();
+            }
+        }
     }
 }
 
@@ -965,6 +976,25 @@ class Scratch3SpikeBlocks {
             showStatusButton: true,
             blocks: [
                 {
+                    opcode: 'displayImageFor',
+                    text: formatMessage({
+                        id: 'spike.displayImageFor',
+                        default: 'turn on [MATRIX] for [DURATION] seconds',
+                        description: 'display a pattern on the SPIKE HUb display'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        MATRIX: {
+                            type: ArgumentType.MATRIX,
+                            defaultValue: '1101111011000001000101110'
+                        },
+                        DURATION: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 2
+                        }
+                    }
+                },
+                {
                     opcode: 'displayImage',
                     text: formatMessage({
                         id: 'spike.displayImage',
@@ -1001,6 +1031,30 @@ class Scratch3SpikeBlocks {
                 }
             }
         };
+    }
+
+    displayImageFor(args) {
+        const symbol = (Cast.toString(args.MATRIX).replace(/\D/g, '') + '0'.repeat(25)).slice(0, 25);
+        const image = symbol.replace(/1/g, '9').match(/.{5}/g).join(':');
+        let duration = Cast.toNumber(args.DURATION) * 1000;
+        duration = MathUtil.clamp(duration, 0, 15000);
+
+        const id = Math.random().toString(36).slice(-4);
+
+        const promise = new Promise((resolve, reject) => {
+            this._peripheral._openRequests[id] = { resolve, reject };
+        });
+
+        this._peripheral.sendJSON({
+            "i": id,
+            "m": "scratch.display_image_for",
+            "p": {
+                "image": image,
+                "duration": duration
+            }
+        });
+
+        return promise;
     }
 
     displayImage(args) {
