@@ -701,6 +701,29 @@ class Spike {
         });
     }
 
+    sendCommand(method, params, needsResponse = true) {
+        if (needsResponse) {
+            const id = Math.random().toString(36).slice(-4);
+
+            const promise = new Promise((resolve, reject) => {
+                this._openRequests[id] = { resolve, reject };
+            });
+
+            this.sendJSON({
+                "i": id,
+                "m": method,
+                "p": params
+            });
+
+            return promise;
+        } else {
+            return this.sendJSON({
+                "m": method,
+                "p": params
+            });
+        }
+    }
+
     /**
      * Genrates direct commands that are sent to the EV3 as a single or compounded byte arrays.
      * See 'EV3 Communication Developer Kit', section 4, page 24 at
@@ -752,10 +775,7 @@ class Spike {
      * @private
      */
     _onConnect() {
-        this.sendJSON({
-            "m": "trigger_current_state",
-            "p": {}
-        });
+        this.sendCommand("trigger_current_state", {}, false);
     }
 
     /**
@@ -1039,34 +1059,18 @@ class Scratch3SpikeBlocks {
         let duration = Cast.toNumber(args.DURATION) * 1000;
         duration = MathUtil.clamp(duration, 0, 60000);
 
-        const id = Math.random().toString(36).slice(-4);
-
-        const promise = new Promise((resolve, reject) => {
-            this._peripheral._openRequests[id] = { resolve, reject };
+        return this._peripheral.sendCommand("scratch.display_image_for", {
+            "image": image,
+            "duration": duration
         });
-
-        this._peripheral.sendJSON({
-            "i": id,
-            "m": "scratch.display_image_for",
-            "p": {
-                "image": image,
-                "duration": duration
-            }
-        });
-
-        return promise;
     }
 
     displayImage(args) {
         const symbol = (Cast.toString(args.MATRIX).replace(/\D/g, '') + '0'.repeat(25)).slice(0, 25);
         const image = symbol.replace(/1/g, '9').match(/.{5}/g).join(':');
 
-        this._peripheral.sendJSON({
-            "i": Math.random().toString(36).slice(-4),
-            "m": "scratch.display_image",
-            "p": {
-                "image": image
-            }
+        return this._peripheral.sendCommand("scratch.display_image", {
+            "image": image
         });
     }
 
