@@ -696,26 +696,33 @@ class Spike {
             if (!this._rateLimiter.okayToSend()) return Promise.resolve();
         }
 
-        return this._bt.sendMessage({
-            message: jsonText + '\r'
-        });
+        const id = json.i;
+        if (id != null) {
+            const promise = new Promise((resolve, reject) => {
+                this._openRequests[id] = { resolve, reject };
+            });
+
+            this._bt.sendMessage({
+                message: jsonText + '\r'
+            });
+
+            return promise;
+        } else {
+            return this._bt.sendMessage({
+                message: jsonText + '\r'
+            })
+        }
     }
 
     sendCommand(method, params, needsResponse = true) {
         if (needsResponse) {
             const id = Math.random().toString(36).slice(-4);
 
-            const promise = new Promise((resolve, reject) => {
-                this._openRequests[id] = { resolve, reject };
-            });
-
-            this.sendJSON({
+            return this.sendJSON({
                 "i": id,
                 "m": method,
                 "p": params
             });
-
-            return promise;
         } else {
             return this.sendJSON({
                 "m": method,
