@@ -440,6 +440,8 @@ class Spike {
          */
         this._motors = [null, null, null, null];
 
+        this._pixelBrightness = 100;
+
         /**
          * The Bluetooth socket connection for reading/writing peripheral data.
          * @type {BT}
@@ -477,6 +479,14 @@ class Spike {
 
     get orientation() {
         return this._sensors.orientation;
+    }
+
+    get pixelBrightness() {
+        return this._pixelBrightness;
+    }
+
+    set pixelBrightness(value) {
+        this._pixelBrightness = value;
     }
 
     /**
@@ -906,6 +916,21 @@ class Scratch3SpikeBlocks {
                     }),
                     blockType: BlockType.COMMAND
                 },
+                {
+                    opcode: 'setPixelBrightness',
+                    text: formatMessage({
+                        id: 'spike.setPixelBrightness',
+                        default: 'set pixel brightness to [BRIGHTNESS] %',
+                        description: 'set the pixel brightness for the SPIKE Hub display'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        BRIGHTNESS: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 75
+                        }
+                    }
+                },
                 '---',
                 {
                     opcode: 'getOrientation',
@@ -931,8 +956,9 @@ class Scratch3SpikeBlocks {
     }
 
     displayImageFor(args) {
+        const brightness = Math.round(9 * this._peripheral.pixelBrightness / 100);
         const symbol = (Cast.toString(args.MATRIX).replace(/\D/g, '') + '0'.repeat(25)).slice(0, 25);
-        const image = symbol.replace(/1/g, '9').match(/.{5}/g).join(':');
+        const image = symbol.replace(/1/g, brightness).match(/.{5}/g).join(':');
         let duration = Cast.toNumber(args.DURATION) * 1000;
         duration = MathUtil.clamp(duration, 0, 60000);
 
@@ -943,8 +969,9 @@ class Scratch3SpikeBlocks {
     }
 
     displayImage(args) {
+        const brightness = Math.round(9 * this._peripheral.pixelBrightness / 100);
         const symbol = (Cast.toString(args.MATRIX).replace(/\D/g, '') + '0'.repeat(25)).slice(0, 25);
-        const image = symbol.replace(/1/g, '9').match(/.{5}/g).join(':');
+        const image = symbol.replace(/1/g, brightness).match(/.{5}/g).join(':');
 
         return this._peripheral.sendCommand("scratch.display_image", {
             "image": image
@@ -961,6 +988,13 @@ class Scratch3SpikeBlocks {
 
     displayClear(args) {
         return this._peripheral.sendCommand("scratch.display_clear", {});
+    }
+
+    setPixelBrightness(args) {
+        let brightness = Cast.toNumber(args.BRIGHTNESS);
+        brightness = MathUtil.clamp(brightness, 0, 100);
+
+        this._peripheral.pixelBrightness = brightness;
     }
 
     getOrientation() {
