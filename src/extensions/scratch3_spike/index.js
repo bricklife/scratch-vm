@@ -17,12 +17,6 @@ const log = require('../../util/log');
 const blockIconURI = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iNDBweCIgaGVpZ2h0PSI0MHB4IiB2aWV3Qm94PSIwIDAgNDAgNDAiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8IS0tIEdlbmVyYXRvcjogU2tldGNoIDU5LjEgKDg2MTQ0KSAtIGh0dHBzOi8vc2tldGNoLmNvbSAtLT4KICAgIDx0aXRsZT5zcGlrZS1zbWFsbDwvdGl0bGU+CiAgICA8ZGVzYz5DcmVhdGVkIHdpdGggU2tldGNoLjwvZGVzYz4KICAgIDxnIGlkPSJzcGlrZS1zbWFsbCIgc3Ryb2tlPSJub25lIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+CiAgICAgICAgPHJlY3QgZmlsbD0iI0ZGRDUwMCIgeD0iMCIgeT0iMCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIj48L3JlY3Q+CiAgICAgICAgPGcgaWQ9Ikdyb3VwLUNvcHkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEuMDAwMDAwLCAxLjAwMDAwMCkiIGZpbGw9IiNGRkZGRkYiPgogICAgICAgICAgICA8cG9seWdvbiBpZD0iUmVjdGFuZ2xlIiBwb2ludHM9IjggOCAxNCA4IDE0IDE0IDggMTQiPjwvcG9seWdvbj4KICAgICAgICAgICAgPHBvbHlnb24gaWQ9IlJlY3RhbmdsZS1Db3B5IiBwb2ludHM9IjggNC45OTYwMDM2MWUtMTYgMTQgMi40OTgwMDE4MWUtMTYgMTQgNiA4IDYiPjwvcG9seWdvbj4KICAgICAgICAgICAgPHBvbHlnb24gaWQ9IlJlY3RhbmdsZS1Db3B5LTMiIHBvaW50cz0iMTYgMTYgMjIgMTYgMjIgMjIgMTYgMjIiPjwvcG9seWdvbj4KICAgICAgICAgICAgPHBvbHlnb24gaWQ9IlJlY3RhbmdsZS1Db3B5LTQiIHBvaW50cz0iMTYgMjQgMjIgMjQgMjIgMzAgMTYgMzAiPjwvcG9seWdvbj4KICAgICAgICAgICAgPHBvbHlnb24gaWQ9IlJlY3RhbmdsZS1Db3B5LTEzIiBwb2ludHM9IjI0IDI0IDMwIDI0IDMwIDMwIDI0IDMwIj48L3BvbHlnb24+CiAgICAgICAgICAgIDxwb2x5Z29uIGlkPSJSZWN0YW5nbGUtQ29weS0xMiIgcG9pbnRzPSIxNiAzMiAyMiAzMiAyMiAzOCAxNiAzOCI+PC9wb2x5Z29uPgogICAgICAgICAgICA8cG9seWdvbiBpZD0iUmVjdGFuZ2xlLUNvcHktMTEiIHBvaW50cz0iOCAxNiAxNCAxNiAxNCAyMiA4IDIyIj48L3BvbHlnb24+CiAgICAgICAgICAgIDxwb2x5Z29uIGlkPSJSZWN0YW5nbGUtQ29weS0xMCIgcG9pbnRzPSI4IDI0IDE0IDI0IDE0IDMwIDggMzAiPjwvcG9seWdvbj4KICAgICAgICAgICAgPHBvbHlnb24gaWQ9IlJlY3RhbmdsZS1Db3B5LTIiIHBvaW50cz0iMTYgOCAyMiA4IDIyIDE0IDE2IDE0Ij48L3BvbHlnb24+CiAgICAgICAgICAgIDxwb2x5Z29uIGlkPSJSZWN0YW5nbGUtQ29weS05IiBwb2ludHM9IjAgMTYgNiAxNiA2IDIyIDAgMjIiPjwvcG9seWdvbj4KICAgICAgICAgICAgPHBvbHlnb24gaWQ9IlJlY3RhbmdsZS1Db3B5LTgiIHBvaW50cz0iMCA4IDYgOCA2IDE0IDAgMTQiPjwvcG9seWdvbj4KICAgICAgICAgICAgPHBvbHlnb24gaWQ9IlJlY3RhbmdsZS1Db3B5LTciIHBvaW50cz0iMjQgOCAzMCA4IDMwIDE0IDI0IDE0Ij48L3BvbHlnb24+CiAgICAgICAgICAgIDxwb2x5Z29uIGlkPSJSZWN0YW5nbGUtQ29weS02IiBwb2ludHM9IjI0IDE2IDMwIDE2IDMwIDIyIDI0IDIyIj48L3BvbHlnb24+CiAgICAgICAgICAgIDxwb2x5Z29uIGlkPSJSZWN0YW5nbGUtQ29weS0xNSIgcG9pbnRzPSIzMiA4IDM4IDggMzggMTQgMzIgMTQiPjwvcG9seWdvbj4KICAgICAgICAgICAgPHBvbHlnb24gaWQ9IlJlY3RhbmdsZS1Db3B5LTE0IiBwb2ludHM9IjMyIDE2IDM4IDE2IDM4IDIyIDMyIDIyIj48L3BvbHlnb24+CiAgICAgICAgICAgIDxwb2x5Z29uIGlkPSJSZWN0YW5nbGUtQ29weS01IiBwb2ludHM9IjI0IDQuOTk2MDAzNjFlLTE2IDMwIDIuNDk4MDAxODFlLTE2IDMwIDYgMjQgNiI+PC9wb2x5Z29uPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+';
 
 /**
- * String with Ev3 expected pairing pin.
- * @readonly
- */
-const Ev3PairingPin = '1234';
-
-/**
  * A maximum number of BT message sends per second, to be enforced by the rate limiter.
  * @type {number}
  */
@@ -98,49 +92,6 @@ const Ev3Args = {
     RAMP: 50, // time in milliseconds
     DO_NOT_CHANGE_TYPE: 0,
     MAX_DEVICES: 32 // 'Normally 32' from pg. 46
-};
-
-/**
- * Enum for Ev3 device type numbers.
- * Found in the 'EV3 Firmware Developer Kit', section 5, page 100, at
- * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits.
- * @readonly
- * @enum {string}
- */
-const Ev3Device = {
-    29: 'color',
-    30: 'ultrasonic',
-    32: 'gyro',
-    16: 'touch',
-    8: 'mediumMotor',
-    7: 'largeMotor',
-    126: 'none',
-    125: 'none'
-};
-
-/**
- * Enum for Ev3 device modes.
- * Found in the 'EV3 Firmware Developer Kit', section 5, page 100, at
- * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits.
- * @readonly
- * @enum {number}
- */
-const Ev3Mode = {
-    touch: 0, // touch
-    color: 1, // ambient
-    ultrasonic: 1, // inch
-    none: 0
-};
-
-/**
- * Enum for Ev3 device labels used in the Scratch blocks/UI.
- * @readonly
- * @enum {string}
- */
-const Ev3Label = {
-    touch: 'button',
-    color: 'brightness',
-    ultrasonic: 'distance'
 };
 
 const SpikeOrientation = {
@@ -490,27 +441,6 @@ class Spike {
         this._motors = [null, null, null, null];
 
         /**
-         * The polling interval, in milliseconds.
-         * @type {number}
-         * @private
-         */
-        this._pollingInterval = 150;
-
-        /**
-         * The polling interval ID.
-         * @type {number}
-         * @private
-         */
-        this._pollingIntervalID = null;
-
-        /**
-         * The counter keeping track of polling cycles.
-         * @type {string[]}
-         * @private
-         */
-        this._pollingCounter = 0;
-
-        /**
          * The Bluetooth socket connection for reading/writing peripheral data.
          * @type {BT}
          * @private
@@ -529,7 +459,6 @@ class Spike {
         this.reset = this.reset.bind(this);
         this._onConnect = this._onConnect.bind(this);
         this._onMessage = this._onMessage.bind(this);
-        this._pollValues = this._pollValues.bind(this);
 
         this._openRequests = {};
     }
@@ -657,11 +586,6 @@ class Spike {
             orientation: null
         };
         this._motors = [null, null, null, null];
-
-        if (this._pollingIntervalID) {
-            window.clearInterval(this._pollingIntervalID);
-            this._pollingIntervalID = null;
-        }
     }
 
     /**
@@ -778,89 +702,11 @@ class Spike {
     }
 
     /**
-     * When the EV3 peripheral connects, start polling for sensor and motor values.
+     * When the EV3 peripheral connects
      * @private
      */
     _onConnect() {
         this.sendCommand("trigger_current_state", {}, false);
-    }
-
-    /**
-     * Poll the EV3 for sensor and motor input values, based on the list of
-     * known connected sensors and motors. This is sent as many compound commands
-     * in a direct command, with a reply expected.
-     *
-     * See 'EV3 Firmware Developer Kit', section 4.8, page 46, at
-     * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits
-     * for a list of polling/input device commands and their arguments.
-     *
-     * @private
-     */
-    _pollValues() {
-        if (!this.isConnected()) {
-            window.clearInterval(this._pollingIntervalID);
-            return;
-        }
-
-        const cmds = []; // compound command
-        let allocation = 0;
-        let sensorCount = 0;
-
-        // Reset the list of devices every 20 counts
-        if (this._pollingCounter % 20 === 0) {
-            // GET DEVICE LIST
-            cmds[0] = Ev3Opcode.OPINPUT_DEVICE_LIST;
-            cmds[1] = Ev3Encoding.ONE_BYTE;
-            cmds[2] = Ev3Args.MAX_DEVICES;
-            cmds[3] = Ev3Encoding.GLOBAL_VARIABLE_INDEX_0;
-            cmds[4] = Ev3Encoding.GLOBAL_VARIABLE_ONE_BYTE;
-            cmds[5] = Ev3Encoding.GLOBAL_CONSTANT_INDEX_0;
-
-            // Command and payload lengths
-            allocation = 33;
-
-            this._updateDevices = true;
-        } else {
-            // GET SENSOR VALUES FOR CONNECTED SENSORS
-            let index = 0;
-            for (let i = 0; i < 4; i++) {
-                if (this._sensorPorts[i] !== 'none') {
-                    cmds[index + 0] = Ev3Opcode.OPINPUT_READSI;
-                    cmds[index + 1] = Ev3Args.LAYER;
-                    cmds[index + 2] = i; // PORT
-                    cmds[index + 3] = Ev3Args.DO_NOT_CHANGE_TYPE;
-                    cmds[index + 4] = Ev3Mode[this._sensorPorts[i]];
-                    cmds[index + 5] = Ev3Encoding.GLOBAL_VARIABLE_ONE_BYTE;
-                    cmds[index + 6] = sensorCount * 4; // GLOBAL INDEX
-                    index += 7;
-                }
-                sensorCount++;
-            }
-
-            // GET MOTOR POSITION VALUES, EVEN IF NO MOTOR PRESENT
-            for (let i = 0; i < 4; i++) {
-                cmds[index + 0] = Ev3Opcode.OPOUTPUT_GET_COUNT;
-                cmds[index + 1] = Ev3Args.LAYER;
-                cmds[index + 2] = i; // PORT (incorrectly specified as 'Output bit field' in LEGO docs)
-                cmds[index + 3] = Ev3Encoding.GLOBAL_VARIABLE_ONE_BYTE;
-                cmds[index + 4] = sensorCount * 4; // GLOBAL INDEX
-                index += 5;
-                sensorCount++;
-            }
-
-            // Command and payload lengths
-            allocation = sensorCount * 4;
-        }
-
-        const cmd = this.generateCommand(
-            Ev3Command.DIRECT_COMMAND_REPLY,
-            cmds,
-            allocation
-        );
-
-        this.send(cmd);
-
-        this._pollingCounter++;
     }
 
     /**
