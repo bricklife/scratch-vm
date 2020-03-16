@@ -653,14 +653,14 @@ class Spike {
             const id = Math.random().toString(36).slice(-4);
 
             return this.sendJSON({
-                "i": id,
-                "m": method,
-                "p": params
+                i: id,
+                m: method,
+                p: params
             });
         } else {
             return this.sendJSON({
-                "m": method,
-                "p": params
+                m: method,
+                p: params
             });
         }
     }
@@ -716,7 +716,7 @@ class Spike {
      * @private
      */
     _onConnect() {
-        this.sendCommand("trigger_current_state", {}, false);
+        this.sendCommand('trigger_current_state', {}, false);
     }
 
     /**
@@ -979,9 +979,9 @@ class Scratch3SpikeBlocks {
         let duration = Cast.toNumber(args.DURATION) * 1000;
         duration = MathUtil.clamp(duration, 0, 60000);
 
-        return this._peripheral.sendCommand("scratch.display_image_for", {
-            "image": image,
-            "duration": duration
+        return this._peripheral.sendCommand('scratch.display_image_for', {
+            image: image,
+            duration: duration
         });
     }
 
@@ -990,21 +990,21 @@ class Scratch3SpikeBlocks {
         const symbol = (Cast.toString(args.MATRIX).replace(/\D/g, '') + '0'.repeat(25)).slice(0, 25);
         const image = symbol.replace(/1/g, brightness).match(/.{5}/g).join(':');
 
-        return this._peripheral.sendCommand("scratch.display_image", {
-            "image": image
+        return this._peripheral.sendCommand('scratch.display_image', {
+            image: image
         });
     }
 
     displayText(args) {
         const text = Cast.toString(args.TEXT);
 
-        return this._peripheral.sendCommand("scratch.display_text", {
-            "text": text
+        return this._peripheral.sendCommand('scratch.display_text', {
+            text: text
         });
     }
 
     displayClear(args) {
-        return this._peripheral.sendCommand("scratch.display_clear", {});
+        return this._peripheral.sendCommand('scratch.display_clear', {});
     }
 
     displaySetBrightness(args) {
@@ -1025,10 +1025,10 @@ class Scratch3SpikeBlocks {
         let brightness = MathUtil.clamp(Cast.toNumber(args.BRIGHTNESS), 0, 100);
         brightness = Math.round(9 * this._peripheral.pixelBrightness / 100);
 
-        return this._peripheral.sendCommand("scratch.display_set_pixel", {
-            "x": x - 1,
-            "y": y - 1,
-            "brightness": brightness
+        return this._peripheral.sendCommand('scratch.display_set_pixel', {
+            x: x - 1,
+            y: y - 1,
+            brightness: brightness
         });
     }
 
