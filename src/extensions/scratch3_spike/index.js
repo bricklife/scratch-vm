@@ -1023,7 +1023,7 @@ class Scratch3SpikeBlocks {
             return Promise.resolve();
         }
         let brightness = MathUtil.clamp(Cast.toNumber(args.BRIGHTNESS), 0, 100);
-        brightness = Math.round(9 * this._peripheral.pixelBrightness / 100);
+        brightness = Math.round(9 * brightness / 100);
 
         return this._peripheral.sendCommand('scratch.display_set_pixel', {
             x: x - 1,
