@@ -909,9 +909,9 @@ class Scratch3SpikeBlocks {
                     blockType: BlockType.COMMAND
                 },
                 {
-                    opcode: 'setPixelBrightness',
+                    opcode: 'displaySetBrightness',
                     text: formatMessage({
-                        id: 'spike.setPixelBrightness',
+                        id: 'spike.displaySetBrightness',
                         default: 'set pixel brightness to [BRIGHTNESS] %',
                         description: 'set the pixel brightness for the SPIKE Hub display'
                     }),
@@ -1007,7 +1007,7 @@ class Scratch3SpikeBlocks {
         return this._peripheral.sendCommand("scratch.display_clear", {});
     }
 
-    setPixelBrightness(args) {
+    displaySetBrightness(args) {
         const brightness = MathUtil.clamp(Cast.toNumber(args.BRIGHTNESS), 0, 100);
 
         this._peripheral.pixelBrightness = brightness;
