@@ -890,7 +890,7 @@ class Spike {
         const message = params.message;
         const data = Base64Util.base64ToUint8Array(message);
         const text = (new TextDecoder).decode(data);
-        const responses = text.split('\r').filter(t => t.length > 0);
+        const responses = text.trim().split('\r');
 
         try {
             responses.forEach((jsonText) => {
@@ -1106,7 +1106,7 @@ class Scratch3SpikeBlocks {
     }
 
     displayText(args) {
-        const text = String(args.TEXT);
+        const text = Cast.toString(args.TEXT);
 
         return this._peripheral.sendCommand("scratch.display_text", {
             "text": text
