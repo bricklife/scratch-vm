@@ -803,20 +803,12 @@ class Spike {
 }
 
 /**
- * Enum for motor port names.
+ * Enum for port names.
  * Note: if changed, will break compatibility with previously saved projects.
  * @readonly
  * @enum {string}
  */
-const Ev3MotorMenu = ['A', 'B', 'C', 'D'];
-
-/**
- * Enum for sensor port names.
- * Note: if changed, will break compatibility with previously saved projects.
- * @readonly
- * @enum {string}
- */
-const Ev3SensorMenu = ['1', '2', '3', '4'];
+const SpikePorts = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 class Scratch3SpikeBlocks {
 
@@ -931,6 +923,31 @@ class Scratch3SpikeBlocks {
                         }
                     }
                 },
+                {
+                    opcode: 'displaySetPixel',
+                    text: formatMessage({
+                        id: 'spike.displaySetPixel',
+                        default: 'set pixel at [X] , [Y] to [BRIGHTNESS] %',
+                        description: 'set a pixel brightness for the SPIKE Hub display'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        X: {
+                            type: ArgumentType.STRING,
+                            menu: 'coordinate',
+                            defaultValue: '1'
+                        },
+                        Y: {
+                            type: ArgumentType.STRING,
+                            menu: 'coordinate',
+                            defaultValue: '1'
+                        },
+                        BRIGHTNESS: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 100
+                        }
+                    }
+                },
                 '---',
                 {
                     opcode: 'getOrientation',
@@ -943,13 +960,13 @@ class Scratch3SpikeBlocks {
                 }
             ],
             menus: {
-                motorPorts: {
+                port: {
                     acceptReporters: true,
-                    items: this._formatMenu(Ev3MotorMenu)
+                    items: SpikePorts
                 },
-                sensorPorts: {
+                coordinate: {
                     acceptReporters: true,
-                    items: this._formatMenu(Ev3SensorMenu)
+                    items: ['1', '2', '3', '4', '5']
                 }
             }
         };
@@ -991,10 +1008,28 @@ class Scratch3SpikeBlocks {
     }
 
     setPixelBrightness(args) {
-        let brightness = Cast.toNumber(args.BRIGHTNESS);
-        brightness = MathUtil.clamp(brightness, 0, 100);
+        const brightness = MathUtil.clamp(Cast.toNumber(args.BRIGHTNESS), 0, 100);
 
         this._peripheral.pixelBrightness = brightness;
+    }
+
+    displaySetPixel(args) {
+        const x = Cast.toNumber(args.X);
+        if (x < 1 || x > 5) {
+            return Promise.resolve();
+        }
+        const y = Cast.toNumber(args.Y);
+        if (y < 1 || y > 5) {
+            return Promise.resolve();
+        }
+        let brightness = MathUtil.clamp(Cast.toNumber(args.BRIGHTNESS), 0, 100);
+        brightness = Math.round(9 * this._peripheral.pixelBrightness / 100);
+
+        return this._peripheral.sendCommand("scratch.display_set_pixel", {
+            "x": x - 1,
+            "y": y - 1,
+            "brightness": brightness
+        });
     }
 
     getOrientation() {
