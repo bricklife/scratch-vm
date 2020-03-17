@@ -430,6 +430,11 @@ class Spike {
             distance: 0,
             brightness: 0,
             buttons: [0, 0, 0, 0],
+            angle: {
+                pitch: 0,
+                roll: 0,
+                yaw: 0
+            },
             orientation: SpikeOrientation.front
         };
 
@@ -475,6 +480,10 @@ class Spike {
 
     get brightness() {
         return this._sensors.brightness;
+    }
+
+    get angle() {
+        return this._sensors.angle;
     }
 
     get orientation() {
@@ -593,6 +602,11 @@ class Spike {
             distance: 0,
             brightness: 0,
             buttons: [0, 0, 0, 0],
+            angle: {
+                pitch: 0,
+                roll: 0,
+                yaw: 0
+            },
             orientation: SpikeOrientation.front
         };
         this._motors = [null, null, null, null];
@@ -765,8 +779,11 @@ class Spike {
         if (response.m != null) {
             switch (response.m) {
                 case 0:
-                    // Hub
-                    // {"m":0,"p":[[0, []], [48, [0, 0, -163, 0]], [0, []], [49, [0, 0, -97, 0]], [0, []], [63, [0, 0, 380]], [-1019, 8, -33], [1, 2, -2], [8, 90, 0], "99999:00009:99909:00909:90909", 421304]}
+                    // Hub (Ports, Acceleration, Gyro Rate, Tilt Angle, LED Matrix, Timer)
+                    const angle = response.p[8];
+                    this._sensors.angle.yaw = angle[0];
+                    this._sensors.angle.pitch = angle[1];
+                    this._sensors.angle.roll = angle[2];
                     break;
                 case 1:
                     // Strage
@@ -957,6 +974,22 @@ class Scratch3SpikeBlocks {
                         description: 'the orientation returned by the tilt sensor'
                     }),
                     blockType: BlockType.REPORTER
+                },
+                {
+                    opcode: 'getAngle',
+                    text: formatMessage({
+                        id: 'spike.getAngle',
+                        default: '[AXIS] angle',
+                        description: 'the angles returned by the tilt sensor'
+                    }),
+                    blockType: BlockType.REPORTER,
+                    arguments: {
+                        AXIS: {
+                            type: ArgumentType.STRING,
+                            menu: 'axis',
+                            defaultValue: 'pitch'
+                        }
+                    }
                 }
             ],
             menus: {
@@ -967,6 +1000,10 @@ class Scratch3SpikeBlocks {
                 coordinate: {
                     acceptReporters: true,
                     items: ['1', '2', '3', '4', '5']
+                },
+                axis: {
+                    acceptReporters: false,
+                    items: ['pitch', 'roll', 'yaw']
                 }
             }
         };
@@ -1034,6 +1071,12 @@ class Scratch3SpikeBlocks {
 
     getOrientation() {
         return this._peripheral.orientation;
+    }
+
+    getAngle(args) {
+        const axis = Cast.toString(args.AXIS);
+
+        return this._peripheral.angle[axis];
     }
 
     motorTurnClockwise(args) {
