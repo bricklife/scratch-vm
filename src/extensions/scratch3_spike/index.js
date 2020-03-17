@@ -430,7 +430,7 @@ class Spike {
             distance: 0,
             brightness: 0,
             buttons: [0, 0, 0, 0],
-            orientation: null
+            orientation: SpikeOrientation.front
         };
 
         /**
@@ -593,7 +593,7 @@ class Spike {
             distance: 0,
             brightness: 0,
             buttons: [0, 0, 0, 0],
-            orientation: null
+            orientation: SpikeOrientation.front
         };
         this._motors = [null, null, null, null];
     }
