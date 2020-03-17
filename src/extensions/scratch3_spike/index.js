@@ -962,7 +962,23 @@ class Scratch3SpikeBlocks {
                             type: ArgumentType.NUMBER,
                             defaultValue: 100
                         }
-                    }
+                    },
+                },
+                {
+                    opcode: 'centerButtonLights',
+                    text: formatMessage({
+                        id: 'spike.centerButtonLights',
+                        default: 'set center button light to [COLOR]',
+                        description: 'set the center button light'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        COLOR: {
+                            type: ArgumentType.STRING,
+                            menu: 'center_button_colors',
+                            defaultValue: 9
+                        }
+                    },
                 },
                 '---',
                 {
@@ -1003,6 +1019,43 @@ class Scratch3SpikeBlocks {
                 axis: {
                     acceptReporters: false,
                     items: ['pitch', 'roll', 'yaw']
+                },
+                center_button_colors: {
+                    acceptReporters: true,
+                    items: [
+                        {
+                            text: 'violet',
+                            value: 1
+                        },
+                        {
+                            text: 'blue',
+                            value: 3
+                        },
+                        {
+                            text: 'azure',
+                            value: 4
+                        },
+                        {
+                            text: 'green',
+                            value: 5
+                        },
+                        {
+                            text: 'yellow',
+                            value: 7
+                        },
+                        {
+                            text: 'red',
+                            value: 9
+                        },
+                        {
+                            text: 'white',
+                            value: 10
+                        },
+                        {
+                            text: 'no color',
+                            value: -1
+                        }
+                    ]
                 }
             }
         };
@@ -1065,6 +1118,14 @@ class Scratch3SpikeBlocks {
             x: x - 1,
             y: y - 1,
             brightness: brightness
+        });
+    }
+
+    centerButtonLights(args) {
+        const color = Cast.toNumber(args.COLOR);
+
+        return this._peripheral.sendCommand('scratch.center_button_lights', {
+            color: color
         });
     }
 
