@@ -980,6 +980,38 @@ class Scratch3SpikeBlocks {
                         }
                     },
                 },
+                {
+                    opcode: 'ultrasonicLightUp',
+                    text: formatMessage({
+                        id: 'spike.ultrasonicLightUp',
+                        default: '[PORT] light up [LIGHT0] [LIGHT1] [LIGHT2] [LIGHT3]',
+                        description: 'set the ultrasonic sensor light'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        PORT: {
+                            type: ArgumentType.STRING,
+                            menu: 'port',
+                            defaultValue: 'A'
+                        },
+                        LIGHT0: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 100
+                        },
+                        LIGHT1: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 100
+                        },
+                        LIGHT2: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 100
+                        },
+                        LIGHT3: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 100
+                        }
+                    },
+                },
                 '---',
                 {
                     opcode: 'getOrientation',
@@ -1126,6 +1158,23 @@ class Scratch3SpikeBlocks {
 
         return this._peripheral.sendCommand('scratch.center_button_lights', {
             color: color
+        });
+    }
+
+    ultrasonicLightUp(args) {
+        const port = Cast.toString(args.PORT).trim().toUpperCase();
+        if (!SpikePorts.includes(port)) {
+            return Promise.resolve();
+        }
+
+        let lights = [];
+        for (let i = 0; i < 4; i++) {
+            lights.push(MathUtil.clamp(Cast.toNumber(args['LIGHT' + i]), 0, 100));
+        }
+
+        return this._peripheral.sendCommand('scratch.ultrasonic_light_up', {
+            port: port,
+            lights: lights
         });
     }
 
