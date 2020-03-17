@@ -95,7 +95,6 @@ const Ev3Args = {
 };
 
 const SpikeOrientation = {
-    any: 0,
     front: 1,
     back: 2,
     up: 3,
