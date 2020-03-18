@@ -22,78 +22,6 @@ const blockIconURI = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNv
  */
 const BTSendRateMax = 40;
 
-/**
- * Enum for Ev3 parameter encodings of various argument and return values.
- * Found in the 'EV3 Firmware Developer Kit', section4, page 9, at
- * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits.
- *
- * The format for these values is:
- * 0xxxxxxx for Short Format
- * 1ttt-bbb for Long Format
- *
- * @readonly
- * @enum {number}
- */
-const Ev3Encoding = {
-    ONE_BYTE: 0x81, // = 0b1000-001, "1 byte to follow"
-    TWO_BYTES: 0x82, // = 0b1000-010, "2 bytes to follow"
-    FOUR_BYTES: 0x83, // = 0b1000-011, "4 bytes to follow"
-    GLOBAL_VARIABLE_ONE_BYTE: 0xE1, // = 0b1110-001, "1 byte to follow"
-    GLOBAL_CONSTANT_INDEX_0: 0x20, // = 0b00100000
-    GLOBAL_VARIABLE_INDEX_0: 0x60 // = 0b01100000
-};
-
-/**
- * Enum for Ev3 direct command types.
- * Found in the 'EV3 Communication Developer Kit', section 4, page 24, at
- * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits.
- * @readonly
- * @enum {number}
- */
-const Ev3Command = {
-    DIRECT_COMMAND_REPLY: 0x00,
-    DIRECT_COMMAND_NO_REPLY: 0x80,
-    DIRECT_REPLY: 0x02
-};
-
-/**
- * Enum for Ev3 commands opcodes.
- * Found in the 'EV3 Firmware Developer Kit', section 4, page 10, at
- * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits.
- * @readonly
- * @enum {number}
- */
-const Ev3Opcode = {
-    OPOUTPUT_STEP_SPEED: 0xAE,
-    OPOUTPUT_TIME_SPEED: 0xAF,
-    OPOUTPUT_STOP: 0xA3,
-    OPOUTPUT_RESET: 0xA2,
-    OPOUTPUT_STEP_SYNC: 0xB0,
-    OPOUTPUT_TIME_SYNC: 0xB1,
-    OPOUTPUT_GET_COUNT: 0xB3,
-    OPSOUND: 0x94,
-    OPSOUND_CMD_TONE: 1,
-    OPSOUND_CMD_STOP: 0,
-    OPINPUT_DEVICE_LIST: 0x98,
-    OPINPUT_READSI: 0x9D
-};
-
-/**
- * Enum for Ev3 values used as arguments to various opcodes.
- * Found in the 'EV3 Firmware Developer Kit', section4, page 10-onwards, at
- * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits.
- * @readonly
- * @enum {number}
- */
-const Ev3Args = {
-    LAYER: 0, // always 0, chained EV3s not supported
-    COAST: 0,
-    BRAKE: 1,
-    RAMP: 50, // time in milliseconds
-    DO_NOT_CHANGE_TYPE: 0,
-    MAX_DEVICES: 32 // 'Normally 32' from pg. 46
-};
-
 const SpikeOrientation = {
     front: 1,
     back: 2,
@@ -111,324 +39,38 @@ const SpikeMotorStopMode = {
 
 class SpikeMotorSetting {
 
-     constructor() {
-         this._speed = 75;
-         this._stopMode = SpikeMotorStopMode.brake;
-         this._stallDetection = true;
-     }
-
-     get speed() {
-         return this._speed;
-     }
-
-     set speed(value) {
-         this._speed = MathUtil.clamp(value, -100, 100);
-     }
-
-     get stopMode() {
-         return this._stopMode;
-     }
-
-     set stopMode(value) {
-         if (value < 0 || value > 2) {
-             return;
-         }
-
-         this._stopMode = value;
-     }
-
-     get stallDetection() {
-         return this._stallDetection;
-     }
-
-     set stallDetection(value) {
-         this._stallDetection = value;
-     }
-}
-
-/**
- * Manage power, direction, and timers for one EV3 motor.
- */
-class EV3Motor {
-
-    /**
-     * Construct a EV3 Motor instance, which could be of type 'largeMotor' or
-     * 'mediumMotor'.
-     *
-     * @param {EV3} parent - the EV3 peripheral which owns this motor.
-     * @param {int} index - the zero-based index of this motor on its parent peripheral.
-     * @param {string} type - the type of motor (i.e. 'largeMotor' or 'mediumMotor').
-     */
-    constructor(parent, index, type) {
-        /**
-         * The EV3 peripheral which owns this motor.
-         * @type {EV3}
-         * @private
-         */
-        this._parent = parent;
-
-        /**
-         * The zero-based index of this motor on its parent peripheral.
-         * @type {int}
-         * @private
-         */
-        this._index = index;
-
-        /**
-         * The type of EV3 motor this could be: 'largeMotor' or 'mediumMotor'.
-         * @type {string}
-         * @private
-         */
-        this._type = type;
-
-        /**
-         * This motor's current direction: 1 for "clockwise" or -1 for "counterclockwise"
-         * @type {number}
-         * @private
-         */
-        this._direction = 1;
-
-        /**
-         * This motor's current power level, in the range [0,100].
-         * @type {number}
-         * @private
-         */
-        this._power = 50;
-
-        /**
-         * This motor's current position, in the range [0,360].
-         * @type {number}
-         * @private
-         */
-        this._position = 0;
-
-        /**
-         * An ID for the current coast command, to help override multiple coast
-         * commands sent in succession.
-         * @type {number}
-         * @private
-         */
-        this._commandID = null;
-
-        /**
-         * A delay, in milliseconds, to add to coasting, to make sure that a brake
-         * first takes effect if one was sent.
-         * @type {number}
-         * @private
-         */
-        this._coastDelay = 1000;
+    constructor() {
+        this._speed = 75;
+        this._stopMode = SpikeMotorStopMode.brake;
+        this._stallDetection = true;
     }
 
-    /**
-     * @return {string} - this motor's type: 'largeMotor' or 'mediumMotor'
-     */
-    get type() {
-        return this._type;
+    get speed() {
+        return this._speed;
     }
 
-    /**
-     * @param {string} value - this motor's new type: 'largeMotor' or 'mediumMotor'
-     */
-    set type(value) {
-        this._type = value;
+    set speed(value) {
+        this._speed = MathUtil.clamp(value, -100, 100);
     }
 
-    /**
-     * @return {int} - this motor's current direction: 1 for "clockwise" or -1 for "counterclockwise"
-     */
-    get direction() {
-        return this._direction;
+    get stopMode() {
+        return this._stopMode;
     }
 
-    /**
-     * @param {int} value - this motor's new direction: 1 for "clockwise" or -1 for "counterclockwise"
-     */
-    set direction(value) {
-        if (value < 0) {
-            this._direction = -1;
-        } else {
-            this._direction = 1;
-        }
-    }
-
-    /**
-     * @return {int} - this motor's current power level, in the range [0,100].
-     */
-    get power() {
-        return this._power;
-    }
-
-    /**
-     * @param {int} value - this motor's new power level, in the range [0,100].
-     */
-    set power(value) {
-        this._power = value;
-    }
-
-    /**
-     * @return {int} - this motor's current position, in the range [-inf,inf].
-     */
-    get position() {
-        return this._position;
-    }
-
-    /**
-     * @param {int} array - this motor's new position, in the range [0,360].
-     */
-    set position(array) {
-        // tachoValue from Paula
-        let value = array[0] + (array[1] * 256) + (array[2] * 256 * 256) + (array[3] * 256 * 256 * 256);
-        if (value > 0x7fffffff) {
-            value = value - 0x100000000;
-        }
-        this._position = value;
-    }
-
-    /**
-     * Turn this motor on for a specific duration.
-     * Found in the 'EV3 Firmware Developer Kit', page 56, at
-     * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits.
-     *
-     * Opcode arguments:
-     * (Data8) LAYER – Specify chain layer number [0 - 3]
-     * (Data8) NOS – Output bit field [0x00 – 0x0F]
-     * (Data8) SPEED – Power level, [-100 – 100]
-     * (Data32) STEP1 – Time in milliseconds for ramp up
-     * (Data32) STEP2 – Time in milliseconds for continues run
-     * (Data32) STEP3 – Time in milliseconds for ramp down
-     * (Data8) BRAKE - Specify break level [0: Float, 1: Break]
-     *
-     * @param {number} milliseconds - run the motor for this long.
-     */
-    turnOnFor(milliseconds) {
-        if (this._power === 0) return;
-
-        const port = this._portMask(this._index);
-        let n = milliseconds;
-        let speed = this._power * this._direction;
-        const ramp = Ev3Args.RAMP;
-
-        let byteCommand = [];
-        byteCommand[0] = Ev3Opcode.OPOUTPUT_TIME_SPEED;
-
-        // If speed is less than zero, make it positive and multiply the input
-        // value by -1
-        if (speed < 0) {
-            speed = -1 * speed;
-            n = -1 * n;
-        }
-        // If the input value is less than 0
-        const dir = (n < 0) ? 0x100 - speed : speed; // step negative or positive
-        n = Math.abs(n);
-        // Setup motor run duration and ramping behavior
-        let rampup = ramp;
-        let rampdown = ramp;
-        let run = n - (ramp * 2);
-        if (run < 0) {
-            rampup = Math.floor(n / 2);
-            run = 0;
-            rampdown = n - rampup;
-        }
-        // Generate motor command values
-        const runcmd = this._runValues(run);
-        byteCommand = byteCommand.concat([
-            Ev3Args.LAYER,
-            port,
-            Ev3Encoding.ONE_BYTE,
-            dir & 0xff,
-            Ev3Encoding.ONE_BYTE,
-            rampup
-        ]).concat(runcmd.concat([
-            Ev3Encoding.ONE_BYTE,
-            rampdown,
-            Ev3Args.BRAKE
-        ]));
-
-        const cmd = this._parent.generateCommand(
-            Ev3Command.DIRECT_COMMAND_NO_REPLY,
-            byteCommand
-        );
-
-        this._parent.send(cmd);
-
-        this.coastAfter(milliseconds);
-    }
-
-    /**
-     * Set the motor to coast after a specified amount of time.
-     * @param {number} time - the time in milliseconds.
-     */
-    coastAfter(time) {
-        if (this._power === 0) return;
-
-        // Set the motor command id to check before starting coast
-        const commandId = uid();
-        this._commandID = commandId;
-
-        // Send coast message
-        setTimeout(() => {
-            // Do not send coast if another motor command changed the command id.
-            if (this._commandID === commandId) {
-                this.coast();
-                this._commandID = null;
-            }
-        }, time + this._coastDelay); // add a delay so the brake takes effect
-    }
-
-    /**
-     * Set the motor to coast.
-     */
-    coast() {
-        if (this._power === 0) return;
-
-        const cmd = this._parent.generateCommand(
-            Ev3Command.DIRECT_COMMAND_NO_REPLY,
-            [
-                Ev3Opcode.OPOUTPUT_STOP,
-                Ev3Args.LAYER,
-                this._portMask(this._index), // port output bit field
-                Ev3Args.COAST
-            ]
-        );
-
-        this._parent.send(cmd, false); // don't use rate limiter to ensure motor stops
-    }
-
-    /**
-     * Generate motor run values for a given input.
-     * @param  {number} run - run input.
-     * @return {array} - run values as a byte array.
-     */
-    _runValues(run) {
-        // If run duration is less than max 16-bit integer
-        if (run < 0x7fff) {
-            return [
-                Ev3Encoding.TWO_BYTES,
-                run & 0xff,
-                (run >> 8) & 0xff
-            ];
+    set stopMode(value) {
+        if (value < 0 || value > 2) {
+            return;
         }
 
-        // Run forever
-        return [
-            Ev3Encoding.FOUR_BYTES,
-            run & 0xff,
-            (run >> 8) & 0xff,
-            (run >> 16) & 0xff,
-            (run >> 24) & 0xff
-        ];
+        this._stopMode = value;
     }
 
-    /**
-     * Return a port value for the EV3 that is in the format for 'output bit field'
-     * as 1/2/4/8, generally needed for motor ports, instead of the typical 0/1/2/3.
-     * The documentation in the 'EV3 Firmware Developer Kit' for motor port arguments
-     * is sometimes mistaken, but we believe motor ports are mostly addressed this way.
-     * @param {number} port - the port number to convert to an 'output bit field'.
-     * @return {number} - the converted port number.
-     */
-    _portMask(port) {
-        return Math.pow(2, port);
+    get stallDetection() {
+        return this._stallDetection;
+    }
+
+    set stallDetection(value) {
+        this._stallDetection = value;
     }
 }
 
@@ -450,27 +92,11 @@ class Spike {
         this._extensionId = extensionId;
 
         /**
-         * A list of the names of the sensors connected in ports 1,2,3,4.
-         * @type {string[]}
-         * @private
-         */
-        this._sensorPorts = [];
-
-        /**
-         * A list of the names of the motors connected in ports A,B,C,D.
-         * @type {string[]}
-         * @private
-         */
-        this._motorPorts = [];
-
-        /**
          * The state of all sensor values.
          * @type {string[]}
          * @private
          */
         this._sensors = {
-            distance: 0,
-            brightness: 0,
             buttons: [0, 0, 0, 0],
             angle: {
                 pitch: 0,
@@ -480,12 +106,7 @@ class Spike {
             orientation: SpikeOrientation.front
         };
 
-        /**
-         * The motors which this EV3 could possibly have connected.
-         * @type {string[]}
-         * @private
-         */
-        this._motors = [null, null, null, null];
+        this._pixelBrightness = 100;
 
         this._motorSettings = {
             A: new SpikeMotorSetting(),
@@ -495,8 +116,6 @@ class Spike {
             E: new SpikeMotorSetting(),
             F: new SpikeMotorSetting()
         };
-
-        this._pixelBrightness = 100;
 
         /**
          * The Bluetooth socket connection for reading/writing peripheral data.
@@ -521,18 +140,6 @@ class Spike {
         this._openRequests = {};
     }
 
-    get distance() {
-        let value = this._sensors.distance > 100 ? 100 : this._sensors.distance;
-        value = value < 0 ? 0 : value;
-        value = Math.round(100 * value) / 100;
-
-        return value;
-    }
-
-    get brightness() {
-        return this._sensors.brightness;
-    }
-
     get angle() {
         return this._sensors.angle;
     }
@@ -545,76 +152,31 @@ class Spike {
         return this._pixelBrightness;
     }
 
-    get motorSettings() {
-        return this._motorSettings;
-    }
-
     set pixelBrightness(value) {
         this._pixelBrightness = value;
     }
 
-    /**
-     * Access a particular motor on this peripheral.
-     * @param {int} index - the zero-based index of the desired motor.
-     * @return {EV3Motor} - the EV3Motor instance, if any, at that index.
-     */
-    motor(index) {
-        return this._motors[index];
-    }
-
-    isButtonPressed(port) {
-        return this._sensors.buttons[port] === 1;
+    get motorSettings() {
+        return this._motorSettings;
     }
 
     beep(freq, time) {
-        const cmd = this.generateCommand(
-            Ev3Command.DIRECT_COMMAND_NO_REPLY,
-            [
-                Ev3Opcode.OPSOUND,
-                Ev3Opcode.OPSOUND_CMD_TONE,
-                Ev3Encoding.ONE_BYTE,
-                2,
-                Ev3Encoding.TWO_BYTES,
-                freq,
-                freq >> 8,
-                Ev3Encoding.TWO_BYTES,
-                time,
-                time >> 8
-            ]
-        );
-
-        this.send(cmd);
     }
 
     stopAll() {
-        /*
         this.stopAllMotors();
         this.stopSound();
-        */
     }
 
     stopSound() {
-        const cmd = this.generateCommand(
-            Ev3Command.DIRECT_COMMAND_NO_REPLY,
-            [
-                Ev3Opcode.OPSOUND,
-                Ev3Opcode.OPSOUND_CMD_STOP
-            ]
-        );
-
-        this.send(cmd, false); // don't use rate limiter to ensure sound stops
+        //this.send(cmd, false); // don't use rate limiter to ensure sound stops
     }
 
     stopAllMotors() {
-        this._motors.forEach(motor => {
-            if (motor) {
-                motor.coast();
-            }
-        });
     }
 
     /**
-     * Called by the runtime when user wants to scan for an EV3 peripheral.
+     * Called by the runtime when user wants to scan for an SPIKE Hub.
      */
     scan() {
         if (this._bt) {
@@ -627,7 +189,7 @@ class Spike {
     }
 
     /**
-     * Called by the runtime when user wants to connect to a certain EV3 peripheral.
+     * Called by the runtime when user wants to connect to a certain SPIKE Hub.
      * @param {number} id - the id of the peripheral to connect to.
      */
     connect(id) {
@@ -637,7 +199,7 @@ class Spike {
     }
 
     /**
-     * Called by the runtime when user wants to disconnect from the EV3 peripheral.
+     * Called by the runtime when user wants to disconnect from the SPIKE Hub.
      */
     disconnect() {
         if (this._bt) {
@@ -651,11 +213,7 @@ class Spike {
      * Reset all the state and timeout/interval ids.
      */
     reset() {
-        this._sensorPorts = [];
-        this._motorPorts = [];
         this._sensors = {
-            distance: 0,
-            brightness: 0,
             buttons: [0, 0, 0, 0],
             angle: {
                 pitch: 0,
@@ -664,11 +222,10 @@ class Spike {
             },
             orientation: SpikeOrientation.front
         };
-        this._motors = [null, null, null, null];
     }
 
     /**
-     * Called by the runtime to detect whether the EV3 peripheral is connected.
+     * Called by the runtime to detect whether the SPIKE Hub is connected.
      * @return {boolean} - the connected state.
      */
     isConnected() {
@@ -735,53 +292,7 @@ class Spike {
     }
 
     /**
-     * Genrates direct commands that are sent to the EV3 as a single or compounded byte arrays.
-     * See 'EV3 Communication Developer Kit', section 4, page 24 at
-     * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits.
-     *
-     * Direct commands are one of two types:
-     * DIRECT_COMMAND_NO_REPLY = a direct command where no reply is expected
-     * DIRECT_COMMAND_REPLY = a direct command where a reply is expected, and the
-     * number and length of returned values needs to be specified.
-     *
-     * The direct command byte array sent takes the following format:
-     * Byte 0 - 1: Command size, Little Endian. Command size not including these 2 bytes
-     * Byte 2 - 3: Message counter, Little Endian. Forth running counter
-     * Byte 4:     Command type. Either DIRECT_COMMAND_REPLY or DIRECT_COMMAND_NO_REPLY
-     * Byte 5 - 6: Reservation (allocation) of global and local variables using a compressed format
-     *             (globals reserved in byte 5 and the 2 lsb of byte 6, locals reserved in the upper
-     *             6 bits of byte 6) – see documentation for more details.
-     * Byte 7 - n: Byte codes as a single command or compound commands (I.e. more commands composed
-     *             as a small program)
-     *
-     * @param {number} type - the direct command type.
-     * @param {string} byteCommands - a compound array of EV3 Opcode + arguments.
-     * @param {number} allocation - the allocation of global and local vars needed for replies.
-     * @return {array} - generated complete command byte array, with header and compounded commands.
-     */
-    generateCommand(type, byteCommands, allocation = 0) {
-
-        // Header (Bytes 0 - 6)
-        let command = [];
-        command[2] = 0; // Message counter unused for now
-        command[3] = 0; // Message counter unused for now
-        command[4] = type;
-        command[5] = allocation & 0xFF;
-        command[6] = allocation >> 8 && 0xFF;
-
-        // Bytecodes (Bytes 7 - n)
-        command = command.concat(byteCommands);
-
-        // Calculate command length minus first two header bytes
-        const len = command.length - 2;
-        command[0] = len & 0xFF;
-        command[1] = len >> 8 && 0xFF;
-
-        return command;
-    }
-
-    /**
-     * When the EV3 peripheral connects
+     * When the SPIKE Hub connects
      * @private
      */
     _onConnect() {
@@ -789,24 +300,7 @@ class Spike {
     }
 
     /**
-     * Message handler for incoming EV3 reply messages, either a list of connected
-     * devices (sensors and motors) or the values of the connected sensors and motors.
-     *
-     * See 'EV3 Communication Developer Kit', section 4.1, page 24 at
-     * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits
-     * for more details on direct reply formats.
-     *
-     * The direct reply byte array sent takes the following format:
-     * Byte 0 – 1: Reply size, Little Endian. Reply size not including these 2 bytes
-     * Byte 2 – 3: Message counter, Little Endian. Equals the Direct Command
-     * Byte 4:     Reply type. Either DIRECT_REPLY or DIRECT_REPLY_ERROR
-     * Byte 5 - n: Resonse buffer. I.e. the content of the by the Command reserved global variables.
-     *             I.e. if the command reserved 64 bytes, these bytes will be placed in the reply
-     *             packet as the bytes 5 to 68.
-     *
-     * See 'EV3 Firmware Developer Kit', section 4.8, page 56 at
-     * https://education.lego.com/en-us/support/mindstorms-ev3/developer-kits
-     * for direct response buffer formats for various commands.
+     * Message handler for incoming SPIKE Hub reply messages
      *
      * @param {object} params - incoming message parameters
      * @private
@@ -893,7 +387,7 @@ class Scratch3SpikeBlocks {
     }
 
     /**
-     * Creates a new instance of the EV3 extension.
+     * Creates a new instance of the SPIKE Prime extension.
      * @param  {object} runtime VM runtime
      * @constructor
      */
@@ -904,7 +398,7 @@ class Scratch3SpikeBlocks {
          */
         this.runtime = runtime;
 
-        // Create a new EV3 peripheral instance
+        // Create a new SPIKE Hub instance
         this._peripheral = new Spike(this.runtime, Scratch3SpikeBlocks.EXTENSION_ID);
 
         this._playNoteForPicker = this._playNoteForPicker.bind(this);
@@ -912,7 +406,7 @@ class Scratch3SpikeBlocks {
     }
 
     /**
-     * Define the EV3 extension.
+     * Define the SPIKE Prime extension.
      * @return {object} Extension description.
      */
     getInfo() {
@@ -1280,7 +774,7 @@ class Scratch3SpikeBlocks {
             });
         });
 
-        return Promise.all(promises).then(() => {});
+        return Promise.all(promises).then(() => { });
     }
 
     motorStart(args) {
@@ -1297,7 +791,7 @@ class Scratch3SpikeBlocks {
             });
         });
 
-        return Promise.all(promises).then(() => {});
+        return Promise.all(promises).then(() => { });
     }
 
     motorStop(args) {
@@ -1311,7 +805,7 @@ class Scratch3SpikeBlocks {
             });
         });
 
-        return Promise.all(promises).then(() => {});
+        return Promise.all(promises).then(() => { });
     }
 
     motorSetSpeed(args) {
@@ -1420,112 +914,6 @@ class Scratch3SpikeBlocks {
         return this._peripheral.angle[axis];
     }
 
-    motorTurnClockwise(args) {
-        const port = Cast.toNumber(args.PORT);
-        let time = Cast.toNumber(args.TIME) * 1000;
-        time = MathUtil.clamp(time, 0, 15000);
-
-        return new Promise(resolve => {
-            this._forEachMotor(port, motorIndex => {
-                const motor = this._peripheral.motor(motorIndex);
-                if (motor) {
-                    motor.direction = 1;
-                    motor.turnOnFor(time);
-                }
-            });
-
-            // Run for some time even when no motor is connected
-            setTimeout(resolve, time);
-        });
-    }
-
-    motorTurnCounterClockwise(args) {
-        const port = Cast.toNumber(args.PORT);
-        let time = Cast.toNumber(args.TIME) * 1000;
-        time = MathUtil.clamp(time, 0, 15000);
-
-        return new Promise(resolve => {
-            this._forEachMotor(port, motorIndex => {
-                const motor = this._peripheral.motor(motorIndex);
-                if (motor) {
-                    motor.direction = -1;
-                    motor.turnOnFor(time);
-                }
-            });
-
-            // Run for some time even when no motor is connected
-            setTimeout(resolve, time);
-        });
-    }
-
-    motorSetPower(args) {
-        const port = Cast.toNumber(args.PORT);
-        const power = MathUtil.clamp(Cast.toNumber(args.POWER), 0, 100);
-
-        this._forEachMotor(port, motorIndex => {
-            const motor = this._peripheral.motor(motorIndex);
-            if (motor) {
-                motor.power = power;
-            }
-        });
-    }
-
-    getMotorPosition(args) {
-        const port = Cast.toNumber(args.PORT);
-
-        if (![0, 1, 2, 3].includes(port)) {
-            return;
-        }
-
-        const motor = this._peripheral.motor(port);
-        let position = 0;
-        if (motor) {
-            position = MathUtil.wrapClamp(motor.position, 0, 360);
-        }
-
-        return position;
-    }
-
-    whenButtonPressed(args) {
-        const port = Cast.toNumber(args.PORT);
-
-        if (![0, 1, 2, 3].includes(port)) {
-            return;
-        }
-
-        return this._peripheral.isButtonPressed(port);
-    }
-
-    whenDistanceLessThan(args) {
-        const distance = MathUtil.clamp(Cast.toNumber(args.DISTANCE), 0, 100);
-
-        return this._peripheral.distance < distance;
-    }
-
-    whenBrightnessLessThan(args) {
-        const brightness = MathUtil.clamp(Cast.toNumber(args.DISTANCE), 0, 100);
-
-        return this._peripheral.brightness < brightness;
-    }
-
-    buttonPressed(args) {
-        const port = Cast.toNumber(args.PORT);
-
-        if (![0, 1, 2, 3].includes(port)) {
-            return;
-        }
-
-        return this._peripheral.isButtonPressed(port);
-    }
-
-    getDistance() {
-        return this._peripheral.distance;
-    }
-
-    getBrightness() {
-        return this._peripheral.brightness;
-    }
-
     _playNoteForPicker(note, category) {
         if (category !== this.getInfo().name) return;
         this.beep({
@@ -1551,71 +939,6 @@ class Scratch3SpikeBlocks {
             // Run for some time even when no piezo is connected.
             setTimeout(resolve, time);
         });
-    }
-
-    /**
-     * Call a callback for each motor indexed by the provided motor ID.
-     *
-     * Note: This way of looping through motors is currently unnecessary, but could be
-     * useful if an 'all motors' option is added in the future (see WeDo2 extension).
-     *
-     * @param {MotorID} motorID - the ID specifier.
-     * @param {Function} callback - the function to call with the numeric motor index for each motor.
-     * @private
-     */
-    _forEachMotor(motorID, callback) {
-        let motors;
-        switch (motorID) {
-            case 0:
-                motors = [0];
-                break;
-            case 1:
-                motors = [1];
-                break;
-            case 2:
-                motors = [2];
-                break;
-            case 3:
-                motors = [3];
-                break;
-            default:
-                log.warn(`Invalid motor ID: ${motorID}`);
-                motors = [];
-                break;
-        }
-        for (const index of motors) {
-            callback(index);
-        }
-    }
-
-    /**
-     * Formats menus into a format suitable for block menus, and loading previously
-     * saved projects:
-     * [
-     *   {
-     *    text: label,
-     *    value: index
-     *   },
-     *   {
-     *    text: label,
-     *    value: index
-     *   },
-     *   etc...
-     * ]
-     *
-     * @param {array} menu - a menu to format.
-     * @return {object} - a formatted menu as an object.
-     * @private
-     */
-    _formatMenu(menu) {
-        const m = [];
-        for (let i = 0; i < menu.length; i++) {
-            const obj = {};
-            obj.text = menu[i];
-            obj.value = i.toString();
-            m.push(obj);
-        }
-        return m;
     }
 
     _validatePorts(text) {
