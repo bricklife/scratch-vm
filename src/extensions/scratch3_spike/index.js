@@ -103,6 +103,49 @@ const SpikeOrientation = {
     leftside: 6
 };
 
+const SpikeMotorStopMode = {
+    float: 0,
+    brake: 1,
+    hold: 2
+};
+
+class SpikeMotorSetting {
+
+     constructor() {
+         this._speed = 75;
+         this._stopMode = SpikeMotorStopMode.brake;
+         this._stallDetection = true;
+     }
+
+     get speed() {
+         return this._speed;
+     }
+
+     set speed(value) {
+         this._speed = MathUtil.clamp(value, -100, 100);
+     }
+
+     get stopMode() {
+         return this._stopMode;
+     }
+
+     set stopMode(value) {
+         if (value < 0 || value > 2) {
+             return;
+         }
+
+         this._stopMode = value;
+     }
+
+     get stallDetection() {
+         return this._stallDetection;
+     }
+
+     set stallDetection(value) {
+         this._stallDetection = value;
+     }
+}
+
 /**
  * Manage power, direction, and timers for one EV3 motor.
  */
@@ -444,6 +487,15 @@ class Spike {
          */
         this._motors = [null, null, null, null];
 
+        this._motorSettings = {
+            A: new SpikeMotorSetting(),
+            B: new SpikeMotorSetting(),
+            C: new SpikeMotorSetting(),
+            D: new SpikeMotorSetting(),
+            E: new SpikeMotorSetting(),
+            F: new SpikeMotorSetting()
+        };
+
         this._pixelBrightness = 100;
 
         /**
@@ -491,6 +543,10 @@ class Spike {
 
     get pixelBrightness() {
         return this._pixelBrightness;
+    }
+
+    get motorSettings() {
+        return this._motorSettings;
     }
 
     set pixelBrightness(value) {
@@ -867,6 +923,32 @@ class Scratch3SpikeBlocks {
             showStatusButton: true,
             blocks: [
                 {
+                    opcode: 'motorGoDirectionToPosition',
+                    text: formatMessage({
+                        id: 'spike.motorGoDirectionToPosition',
+                        default: '[PORT] go [DIRECTION] to position [POSITION]',
+                        description: 'NEEDS DESCRIPTION'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        PORT: {
+                            type: ArgumentType.STRING,
+                            menu: 'port',
+                            defaultValue: 'A'
+                        },
+                        DIRECTION: {
+                            type: ArgumentType.STRING,
+                            menu: 'direction',
+                            defaultValue: 'shortest'
+                        },
+                        POSITION: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 0
+                        }
+                    }
+                },
+                '---',
+                {
                     opcode: 'displayImageFor',
                     text: formatMessage({
                         id: 'spike.displayImageFor',
@@ -1088,9 +1170,47 @@ class Scratch3SpikeBlocks {
                             value: -1
                         }
                     ]
+                },
+                direction: {
+                    acceptReporters: false,
+                    items: [
+                        {
+                            text: 'shortest path',
+                            value: 'shortest'
+                        },
+                        {
+                            text: 'clockwise',
+                            value: 'clockwise'
+                        },
+                        {
+                            text: 'counterclockwise',
+                            value: 'counterclockwise'
+                        }
+                    ]
                 }
             }
         };
+    }
+
+    motorGoDirectionToPosition(args) {
+        const direction = args.DIRECTION;
+        const position = Math.round(Cast.toNumber(args.POSITION));
+
+        const ports = this._validatePorts(Cast.toString(args.PORT));
+        const settings = this._peripheral.motorSettings;
+
+        const promises = ports.map(port => {
+            return this._peripheral.sendCommand('scratch.motor_go_direction_to_position', {
+                port: port,
+                direction: direction,
+                position: position,
+                speed: settings[port].speed,
+                stop: settings[port].stopMode,
+                stall: settings[port].stallDetection
+            });
+        });
+
+        return Promise.all(promises).then(() => {});
     }
 
     displayImageFor(args) {
@@ -1384,6 +1504,10 @@ class Scratch3SpikeBlocks {
             m.push(obj);
         }
         return m;
+    }
+
+    _validatePorts(text) {
+        return text.toUpperCase().replace(/[^ABCDEF]/g, '').split('').filter((x, i, self) => self.indexOf(x) === i).sort();
     }
 }
 
