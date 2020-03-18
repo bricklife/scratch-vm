@@ -969,6 +969,22 @@ class Scratch3SpikeBlocks {
                     }
                 },
                 {
+                    opcode: 'motorStop',
+                    text: formatMessage({
+                        id: 'spike.motorStop',
+                        default: '[PORT] stop motor',
+                        description: 'NEEDS DESCRIPTION'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        PORT: {
+                            type: ArgumentType.STRING,
+                            menu: 'port',
+                            defaultValue: 'A'
+                        }
+                    }
+                },
+                {
                     opcode: 'motorSetSpeed',
                     text: formatMessage({
                         id: 'spike.motorSetSpeed',
@@ -1278,6 +1294,20 @@ class Scratch3SpikeBlocks {
                 port: port,
                 speed: settings[port].speed * direction,
                 stall: settings[port].stallDetection
+            });
+        });
+
+        return Promise.all(promises).then(() => {});
+    }
+
+    motorStop(args) {
+        const ports = this._validatePorts(Cast.toString(args.PORT));
+        const settings = this._peripheral.motorSettings;
+
+        const promises = ports.map(port => {
+            return this._peripheral.sendCommand('scratch.motor_stop', {
+                port: port,
+                stop: settings[port].stopMode
             });
         });
 
