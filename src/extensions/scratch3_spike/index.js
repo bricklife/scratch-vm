@@ -938,12 +938,33 @@ class Scratch3SpikeBlocks {
                         },
                         DIRECTION: {
                             type: ArgumentType.STRING,
-                            menu: 'direction',
+                            menu: 'position_direction',
                             defaultValue: 'shortest'
                         },
                         POSITION: {
                             type: ArgumentType.NUMBER,
                             defaultValue: 0
+                        }
+                    }
+                },
+                {
+                    opcode: 'motorStart',
+                    text: formatMessage({
+                        id: 'spike.motorStart',
+                        default: '[PORT] start motor [DIRECTION]',
+                        description: 'NEEDS DESCRIPTION'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        PORT: {
+                            type: ArgumentType.STRING,
+                            menu: 'port',
+                            defaultValue: 'A'
+                        },
+                        DIRECTION: {
+                            type: ArgumentType.NUMBER,
+                            menu: 'direction',
+                            defaultValue: 1
                         }
                     }
                 },
@@ -1195,6 +1216,19 @@ class Scratch3SpikeBlocks {
                     acceptReporters: false,
                     items: [
                         {
+                            text: 'clockwise',
+                            value: 1
+                        },
+                        {
+                            text: 'counterclockwise',
+                            value: -1
+                        }
+                    ]
+                },
+                position_direction: {
+                    acceptReporters: false,
+                    items: [
+                        {
                             text: 'shortest path',
                             value: 'shortest'
                         },
@@ -1226,6 +1260,23 @@ class Scratch3SpikeBlocks {
                 position: position,
                 speed: settings[port].speed,
                 stop: settings[port].stopMode,
+                stall: settings[port].stallDetection
+            });
+        });
+
+        return Promise.all(promises).then(() => {});
+    }
+
+    motorStart(args) {
+        const direction = args.DIRECTION;
+
+        const ports = this._validatePorts(Cast.toString(args.PORT));
+        const settings = this._peripheral.motorSettings;
+
+        const promises = ports.map(port => {
+            return this._peripheral.sendCommand('scratch.motor_start', {
+                port: port,
+                speed: settings[port].speed * direction,
                 stall: settings[port].stallDetection
             });
         });
