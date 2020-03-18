@@ -947,6 +947,26 @@ class Scratch3SpikeBlocks {
                         }
                     }
                 },
+                {
+                    opcode: 'motorSetSpeed',
+                    text: formatMessage({
+                        id: 'spike.motorSetSpeed',
+                        default: '[PORT] set speed to [SPEED] %',
+                        description: 'NEEDS DESCRIPTION'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        PORT: {
+                            type: ArgumentType.STRING,
+                            menu: 'port',
+                            defaultValue: 'A'
+                        },
+                        SPEED: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 75
+                        }
+                    }
+                },
                 '---',
                 {
                     opcode: 'displayImageFor',
@@ -1211,6 +1231,17 @@ class Scratch3SpikeBlocks {
         });
 
         return Promise.all(promises).then(() => {});
+    }
+
+    motorSetSpeed(args) {
+        const speed = Cast.toNumber(args.SPEED);
+
+        const ports = this._validatePorts(Cast.toString(args.PORT));
+        const settings = this._peripheral.motorSettings;
+
+        ports.forEach(port => {
+            settings[port].speed = speed;
+        });
     }
 
     displayImageFor(args) {
