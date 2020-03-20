@@ -112,6 +112,8 @@ class Spike {
             orientation: SpikeOrientation.front
         };
 
+        this._portValues = {};
+
         this._pixelBrightness = 100;
 
         this._motorSettings = {
@@ -152,6 +154,10 @@ class Spike {
 
     get orientation () {
         return this._sensors.orientation;
+    }
+
+    get portValues () {
+        return this._portValues;
     }
 
     get pixelBrightness () {
@@ -229,6 +235,8 @@ class Spike {
             },
             orientation: SpikeOrientation.front
         };
+
+        this._portValues = {};
     }
 
     /**
@@ -327,6 +335,28 @@ class Spike {
             case 0:
                 // Hub (Ports, Acceleration, Gyro Rate, Tilt Angle, LED Matrix, Timer)
                 {
+                    // Ports
+                    for (let i = 0; i < 6; i++) {
+                        const port = SpikePorts[i];
+                        const deviceId = response.p[i][0];
+                        const values = response.p[i][1];
+                        switch (deviceId) {
+                        case 48:
+                        case 49:
+                            this._portValues[port] = {
+                                speed: values[0],
+                                degreesCounted: values[1],
+                                position: (values[2] + 360) % 360,
+                                power: values[3]
+                            };
+                            break;
+                        default:
+                            this._portValues[port] = {};
+                            break;
+                        }
+                    }
+
+                    // Tilt Angle
                     const angle = response.p[8];
                     this._sensors.angle.yaw = angle[0];
                     this._sensors.angle.pitch = angle[1];
@@ -485,6 +515,22 @@ class Scratch3SpikeBlocks {
                         SPEED: {
                             type: ArgumentType.NUMBER,
                             defaultValue: 75
+                        }
+                    }
+                },
+                {
+                    opcode: 'getPosition',
+                    text: formatMessage({
+                        id: 'spike.getPosition',
+                        default: '[PORT] position',
+                        description: 'NEEDS DESCRIPTION'
+                    }),
+                    blockType: BlockType.REPORTER,
+                    arguments: {
+                        PORT: {
+                            type: ArgumentType.STRING,
+                            menu: 'port',
+                            defaultValue: 'A'
                         }
                     }
                 },
@@ -814,6 +860,19 @@ class Scratch3SpikeBlocks {
         ports.forEach(port => {
             settings[port].speed = speed;
         });
+    }
+
+    getPosition (args) {
+        const port = Cast.toString(args.PORT).trim()
+            .toUpperCase();
+        if (!SpikePorts.includes(port)) {
+            return 0;
+        }
+        if (!this._peripheral.portValues[port].hasOwnProperty('position')) {
+            return 0;
+        }
+
+        return this._peripheral.portValues[port].position;
     }
 
     displayImageFor (args) {
