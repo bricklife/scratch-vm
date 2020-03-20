@@ -235,7 +235,7 @@ class Spike {
         return connected;
     }
 
-    sendJSON (json, useLimiter = true) {
+    sendJSON (json, useLimiter = false) {
         const jsonText = JSON.stringify(json);
         console.log('> ' + jsonText);
 
