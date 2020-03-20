@@ -2,12 +2,10 @@ const ArgumentType = require('../../extension-support/argument-type');
 const BlockType = require('../../extension-support/block-type');
 const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
-const uid = require('../../util/uid');
 const BT = require('../../io/bt');
 const Base64Util = require('../../util/base64-util');
 const MathUtil = require('../../util/math-util');
 const RateLimiter = require('../../util/rateLimiter.js');
-const log = require('../../util/log');
 
 /**
  * Icon svg to be displayed at the left edge of each extension block, encoded as a data URI.
@@ -39,25 +37,25 @@ const SpikeMotorStopMode = {
 
 class SpikeMotorSetting {
 
-    constructor() {
+    constructor () {
         this._speed = 75;
         this._stopMode = SpikeMotorStopMode.brake;
         this._stallDetection = true;
     }
 
-    get speed() {
+    get speed () {
         return this._speed;
     }
 
-    set speed(value) {
+    set speed (value) {
         this._speed = MathUtil.clamp(value, -100, 100);
     }
 
-    get stopMode() {
+    get stopMode () {
         return this._stopMode;
     }
 
-    set stopMode(value) {
+    set stopMode (value) {
         if (value < 0 || value > 2) {
             return;
         }
@@ -65,18 +63,18 @@ class SpikeMotorSetting {
         this._stopMode = value;
     }
 
-    get stallDetection() {
+    get stallDetection () {
         return this._stallDetection;
     }
 
-    set stallDetection(value) {
+    set stallDetection (value) {
         this._stallDetection = value;
     }
 }
 
 class Spike {
 
-    constructor(runtime, extensionId) {
+    constructor (runtime, extensionId) {
 
         /**
          * The Scratch 3.0 runtime used to trigger the green flag button.
@@ -140,45 +138,46 @@ class Spike {
         this._openRequests = {};
     }
 
-    get angle() {
+    get angle () {
         return this._sensors.angle;
     }
 
-    get orientation() {
+    get orientation () {
         return this._sensors.orientation;
     }
 
-    get pixelBrightness() {
+    get pixelBrightness () {
         return this._pixelBrightness;
     }
 
-    set pixelBrightness(value) {
+    set pixelBrightness (value) {
         this._pixelBrightness = value;
     }
 
-    get motorSettings() {
+    get motorSettings () {
         return this._motorSettings;
     }
 
-    beep(freq, time) {
+    beep (freq, time) {
+        console.log(`freq: ${freq}, time: ${time}`);
     }
 
-    stopAll() {
+    stopAll () {
         this.stopAllMotors();
         this.stopSound();
     }
 
-    stopSound() {
-        //this.send(cmd, false); // don't use rate limiter to ensure sound stops
+    stopSound () {
+        // this.send(cmd, false); // don't use rate limiter to ensure sound stops
     }
 
-    stopAllMotors() {
+    stopAllMotors () {
     }
 
     /**
      * Called by the runtime when user wants to scan for an SPIKE Hub.
      */
-    scan() {
+    scan () {
         if (this._bt) {
             this._bt.disconnect();
         }
@@ -192,7 +191,7 @@ class Spike {
      * Called by the runtime when user wants to connect to a certain SPIKE Hub.
      * @param {number} id - the id of the peripheral to connect to.
      */
-    connect(id) {
+    connect (id) {
         if (this._bt) {
             this._bt.connectPeripheral(id);
         }
@@ -201,7 +200,7 @@ class Spike {
     /**
      * Called by the runtime when user wants to disconnect from the SPIKE Hub.
      */
-    disconnect() {
+    disconnect () {
         if (this._bt) {
             this._bt.disconnect();
         }
@@ -212,7 +211,7 @@ class Spike {
     /**
      * Reset all the state and timeout/interval ids.
      */
-    reset() {
+    reset () {
         this._sensors = {
             buttons: [0, 0, 0, 0],
             angle: {
@@ -228,7 +227,7 @@ class Spike {
      * Called by the runtime to detect whether the SPIKE Hub is connected.
      * @return {boolean} - the connected state.
      */
-    isConnected() {
+    isConnected () {
         let connected = false;
         if (this._bt) {
             connected = this._bt.isConnected();
@@ -236,17 +235,7 @@ class Spike {
         return connected;
     }
 
-    /**
-     * Send a message to the peripheral BT socket.
-     * @param {Uint8Array} message - the message to send.
-     * @param {boolean} [useLimiter=true] - if true, use the rate limiter
-     * @return {Promise} - a promise result of the send operation.
-     */
-    send(message, useLimiter = true) {
-        console.trace('Called send() function');
-    }
-
-    sendJSON(json, useLimiter = true) {
+    sendJSON (json, useLimiter = true) {
         const jsonText = JSON.stringify(json);
         console.log('> ' + jsonText);
 
@@ -256,46 +245,46 @@ class Spike {
             if (!this._rateLimiter.okayToSend()) return Promise.resolve();
         }
 
-        const id = json.i;
-        if (id != null) {
-            const promise = new Promise((resolve, reject) => {
-                this._openRequests[id] = { resolve, reject };
-            });
-
-            this._bt.sendMessage({
-                message: jsonText + '\r'
-            });
-
-            return promise;
-        } else {
+        if (!json.hasOwnProperty('i')) {
             return this._bt.sendMessage({
-                message: jsonText + '\r'
-            })
+                message: `${jsonText}\r`
+            });
         }
+
+        const promise = new Promise((resolve, reject) => {
+            this._openRequests[json.i] = {resolve, reject};
+        });
+
+        this._bt.sendMessage({
+            message: `${jsonText}\r`
+        });
+
+        return promise;
     }
 
-    sendCommand(method, params, needsResponse = true) {
+    sendCommand (method, params, needsResponse = true) {
         if (needsResponse) {
-            const id = Math.random().toString(36).slice(-4);
+            const id = Math.random().toString(36)
+                .slice(-4);
 
             return this.sendJSON({
                 i: id,
                 m: method,
                 p: params
             });
-        } else {
-            return this.sendJSON({
-                m: method,
-                p: params
-            });
         }
+
+        return this.sendJSON({
+            m: method,
+            p: params
+        });
     }
 
     /**
      * When the SPIKE Hub connects
      * @private
      */
-    _onConnect() {
+    _onConnect () {
         this.sendCommand('trigger_current_state', {}, false);
     }
 
@@ -305,16 +294,16 @@ class Spike {
      * @param {object} params - incoming message parameters
      * @private
      */
-    _onMessage(params) {
+    _onMessage (params) {
         const message = params.message;
         const data = Base64Util.base64ToUint8Array(message);
-        const text = (new TextDecoder).decode(data);
+        const text = (new TextDecoder()).decode(data);
         const responses = text.trim().split('\r');
 
         try {
-            responses.forEach((jsonText) => {
+            responses.forEach(jsonText => {
                 const json = JSON.parse(jsonText);
-                if (json.m != 0 || json.i != null) {
+                if (json.hasOwnProperty('i') || json.m !== 0) {
                     console.log('< ' + jsonText);
                 }
                 this.parseResponse(json);
@@ -324,40 +313,41 @@ class Spike {
         }
     }
 
-    parseResponse(response) {
-        if (response.m != null) {
+    parseResponse (response) {
+        if (response.hasOwnProperty('m')) {
             switch (response.m) {
-                case 0:
-                    // Hub (Ports, Acceleration, Gyro Rate, Tilt Angle, LED Matrix, Timer)
+            case 0:
+                // Hub (Ports, Acceleration, Gyro Rate, Tilt Angle, LED Matrix, Timer)
+                {
                     const angle = response.p[8];
                     this._sensors.angle.yaw = angle[0];
                     this._sensors.angle.pitch = angle[1];
                     this._sensors.angle.roll = angle[2];
-                    break;
-                case 1:
-                    // Strage
-                    // {"m":1,"p":{"storage": {"available": 31056, "total": 31744, "pct": 3.16734, "unit": "kb", "free": 31056}, "slots": {"1": {"created": 1579238598349, "id": 5626, "size": 2778, "modified": 1579240679453, "name": "Report Test"}, "0": {"created": 1579137873835, "id": 22622, "size": 3010, "modified": 1579236837793, "name": "Key Code"}}}}
-                    break;
-                case 2:
-                    // Battery
-                    // {"m":2,"p":[8.316, 100]}
-                    break;
-                case 3:
-                    // Button
-                    // {"m":3,"p":["right", 0]}
-                    break;
-                case 4:
-                    // Event (Orientation, Gesture)
-                    if (SpikeOrientation[response.p]) {
-                        this._sensors.orientation = SpikeOrientation[response.p];
-                    }
-                    break;
-                default:
-                    break;
+                }
+                break;
+            case 1:
+                // Strage
+                break;
+            case 2:
+                // Battery
+                // {"m":2,"p":[8.316, 100]}
+                break;
+            case 3:
+                // Button
+                // {"m":3,"p":["right", 0]}
+                break;
+            case 4:
+                // Event (Orientation, Gesture)
+                if (SpikeOrientation.hasOwnProperty(response.p)) {
+                    this._sensors.orientation = SpikeOrientation[response.p];
+                }
+                break;
+            default:
+                break;
             }
         }
 
-        if (response.i != null) {
+        if (response.hasOwnProperty('i')) {
             const openRequest = this._openRequests[response.i];
             delete this._openRequests[response.i];
 
@@ -382,7 +372,7 @@ class Scratch3SpikeBlocks {
      * The ID of the extension.
      * @return {string} the id
      */
-    static get EXTENSION_ID() {
+    static get EXTENSION_ID () {
         return 'spike';
     }
 
@@ -391,7 +381,7 @@ class Scratch3SpikeBlocks {
      * @param  {object} runtime VM runtime
      * @constructor
      */
-    constructor(runtime) {
+    constructor (runtime) {
         /**
          * The Scratch 3.0 runtime.
          * @type {Runtime}
@@ -409,7 +399,7 @@ class Scratch3SpikeBlocks {
      * Define the SPIKE Prime extension.
      * @return {object} Extension description.
      */
-    getInfo() {
+    getInfo () {
         return {
             id: Scratch3SpikeBlocks.EXTENSION_ID,
             name: 'LEGO SPIKE Prime',
@@ -595,7 +585,7 @@ class Scratch3SpikeBlocks {
                             type: ArgumentType.NUMBER,
                             defaultValue: 100
                         }
-                    },
+                    }
                 },
                 {
                     opcode: 'centerButtonLights',
@@ -611,7 +601,7 @@ class Scratch3SpikeBlocks {
                             menu: 'center_button_colors',
                             defaultValue: 9
                         }
-                    },
+                    }
                 },
                 {
                     opcode: 'ultrasonicLightUp',
@@ -643,7 +633,7 @@ class Scratch3SpikeBlocks {
                             type: ArgumentType.NUMBER,
                             defaultValue: 100
                         }
-                    },
+                    }
                 },
                 '---',
                 {
@@ -756,7 +746,7 @@ class Scratch3SpikeBlocks {
         };
     }
 
-    motorGoDirectionToPosition(args) {
+    motorGoDirectionToPosition (args) {
         const direction = args.DIRECTION;
         const position = Math.round(Cast.toNumber(args.POSITION));
 
@@ -764,51 +754,54 @@ class Scratch3SpikeBlocks {
         const settings = this._peripheral.motorSettings;
 
         const promises = ports.map(port => {
+            const setting = settings[port];
             return this._peripheral.sendCommand('scratch.motor_go_direction_to_position', {
                 port: port,
                 direction: direction,
                 position: position,
-                speed: settings[port].speed,
-                stop: settings[port].stopMode,
-                stall: settings[port].stallDetection
+                speed: setting.speed,
+                stop: setting.stopMode,
+                stall: setting.stallDetection
             });
         });
 
-        return Promise.all(promises).then(() => { });
+        return Promise.all(promises).then(() => {});
     }
 
-    motorStart(args) {
+    motorStart (args) {
         const direction = args.DIRECTION;
 
         const ports = this._validatePorts(Cast.toString(args.PORT));
         const settings = this._peripheral.motorSettings;
 
         const promises = ports.map(port => {
+            const setting = settings[port];
             return this._peripheral.sendCommand('scratch.motor_start', {
                 port: port,
-                speed: settings[port].speed * direction,
-                stall: settings[port].stallDetection
+                speed: setting.speed * direction,
+                stall: setting.stallDetection
             });
         });
 
-        return Promise.all(promises).then(() => { });
+        return Promise.all(promises).then(() => {});
     }
 
-    motorStop(args) {
+    motorStop (args) {
         const ports = this._validatePorts(Cast.toString(args.PORT));
         const settings = this._peripheral.motorSettings;
 
         const promises = ports.map(port => {
+            const setting = settings[port];
             return this._peripheral.sendCommand('scratch.motor_stop', {
                 port: port,
-                stop: settings[port].stopMode
+                stop: setting.stopMode
             });
         });
 
-        return Promise.all(promises).then(() => { });
+        return Promise.all(promises).then(() => {});
     }
 
-    motorSetSpeed(args) {
+    motorSetSpeed (args) {
         const speed = Cast.toNumber(args.SPEED);
 
         const ports = this._validatePorts(Cast.toString(args.PORT));
@@ -819,10 +812,11 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    displayImageFor(args) {
+    displayImageFor (args) {
         const brightness = Math.round(9 * this._peripheral.pixelBrightness / 100);
         const symbol = (Cast.toString(args.MATRIX).replace(/\D/g, '') + '0'.repeat(25)).slice(0, 25);
-        const image = symbol.replace(/1/g, brightness).match(/.{5}/g).join(':');
+        const image = symbol.replace(/1/g, brightness).match(/.{5}/g)
+            .join(':');
         let duration = Cast.toNumber(args.DURATION) * 1000;
         duration = MathUtil.clamp(duration, 0, 60000);
 
@@ -832,17 +826,18 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    displayImage(args) {
+    displayImage (args) {
         const brightness = Math.round(9 * this._peripheral.pixelBrightness / 100);
         const symbol = (Cast.toString(args.MATRIX).replace(/\D/g, '') + '0'.repeat(25)).slice(0, 25);
-        const image = symbol.replace(/1/g, brightness).match(/.{5}/g).join(':');
+        const image = symbol.replace(/1/g, brightness).match(/.{5}/g)
+            .join(':');
 
         return this._peripheral.sendCommand('scratch.display_image', {
             image: image
         });
     }
 
-    displayText(args) {
+    displayText (args) {
         const text = Cast.toString(args.TEXT);
 
         return this._peripheral.sendCommand('scratch.display_text', {
@@ -850,17 +845,17 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    displayClear(args) {
+    displayClear () {
         return this._peripheral.sendCommand('scratch.display_clear', {});
     }
 
-    displaySetBrightness(args) {
+    displaySetBrightness (args) {
         const brightness = MathUtil.clamp(Cast.toNumber(args.BRIGHTNESS), 0, 100);
 
         this._peripheral.pixelBrightness = brightness;
     }
 
-    displaySetPixel(args) {
+    displaySetPixel (args) {
         const x = Cast.toNumber(args.X);
         if (x < 1 || x > 5) {
             return Promise.resolve();
@@ -879,7 +874,7 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    centerButtonLights(args) {
+    centerButtonLights (args) {
         const color = Cast.toNumber(args.COLOR);
 
         return this._peripheral.sendCommand('scratch.center_button_lights', {
@@ -887,15 +882,16 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    ultrasonicLightUp(args) {
-        const port = Cast.toString(args.PORT).trim().toUpperCase();
+    ultrasonicLightUp (args) {
+        const port = Cast.toString(args.PORT).trim()
+            .toUpperCase();
         if (!SpikePorts.includes(port)) {
             return Promise.resolve();
         }
 
-        let lights = [];
+        const lights = [];
         for (let i = 0; i < 4; i++) {
-            lights.push(MathUtil.clamp(Cast.toNumber(args['LIGHT' + i]), 0, 100));
+            lights.push(MathUtil.clamp(Cast.toNumber(args[`LIGHT${i}`]), 0, 100));
         }
 
         return this._peripheral.sendCommand('scratch.ultrasonic_light_up', {
@@ -904,17 +900,17 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    getOrientation() {
+    getOrientation () {
         return this._peripheral.orientation;
     }
 
-    getAngle(args) {
+    getAngle (args) {
         const axis = Cast.toString(args.AXIS);
 
         return this._peripheral.angle[axis];
     }
 
-    _playNoteForPicker(note, category) {
+    _playNoteForPicker (note, category) {
         if (category !== this.getInfo().name) return;
         this.beep({
             NOTE: note,
@@ -922,7 +918,7 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    beep(args) {
+    beep (args) {
         const note = MathUtil.clamp(Cast.toNumber(args.NOTE), 47, 99); // valid EV3 sounds
         let time = Cast.toNumber(args.TIME) * 1000;
         time = MathUtil.clamp(time, 0, 3000);
@@ -941,8 +937,11 @@ class Scratch3SpikeBlocks {
         });
     }
 
-    _validatePorts(text) {
-        return text.toUpperCase().replace(/[^ABCDEF]/g, '').split('').filter((x, i, self) => self.indexOf(x) === i).sort();
+    _validatePorts (text) {
+        return text.toUpperCase().replace(/[^ABCDEF]/g, '')
+            .split('')
+            .filter((x, i, self) => self.indexOf(x) === i)
+            .sort();
     }
 }
 
