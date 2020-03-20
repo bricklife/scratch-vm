@@ -20,6 +20,20 @@ const blockIconURI = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNv
  */
 const BTSendRateMax = 40;
 
+/**
+ * Enum for port names.
+ * Note: if changed, will break compatibility with previously saved projects.
+ * @readonly
+ * @enum {string}
+ */
+const SpikePorts = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+const SpikeMotorStopMode = {
+    float: 0,
+    brake: 1,
+    hold: 2
+};
+
 const SpikeOrientation = {
     front: 1,
     back: 2,
@@ -27,12 +41,6 @@ const SpikeOrientation = {
     down: 4,
     rightside: 5,
     leftside: 6
-};
-
-const SpikeMotorStopMode = {
-    float: 0,
-    brake: 1,
-    hold: 2
 };
 
 class SpikeMotorSetting {
@@ -358,14 +366,6 @@ class Spike {
     }
 }
 
-/**
- * Enum for port names.
- * Note: if changed, will break compatibility with previously saved projects.
- * @readonly
- * @enum {string}
- */
-const SpikePorts = ['A', 'B', 'C', 'D', 'E', 'F'];
-
 class Scratch3SpikeBlocks {
 
     /**
@@ -417,7 +417,7 @@ class Scratch3SpikeBlocks {
                     arguments: {
                         PORT: {
                             type: ArgumentType.STRING,
-                            menu: 'port',
+                            menu: 'multiple_port',
                             defaultValue: 'A'
                         },
                         DIRECTION: {
@@ -442,7 +442,7 @@ class Scratch3SpikeBlocks {
                     arguments: {
                         PORT: {
                             type: ArgumentType.STRING,
-                            menu: 'port',
+                            menu: 'multiple_port',
                             defaultValue: 'A'
                         },
                         DIRECTION: {
@@ -463,7 +463,7 @@ class Scratch3SpikeBlocks {
                     arguments: {
                         PORT: {
                             type: ArgumentType.STRING,
-                            menu: 'port',
+                            menu: 'multiple_port',
                             defaultValue: 'A'
                         }
                     }
@@ -479,7 +479,7 @@ class Scratch3SpikeBlocks {
                     arguments: {
                         PORT: {
                             type: ArgumentType.STRING,
-                            menu: 'port',
+                            menu: 'multiple_port',
                             defaultValue: 'A'
                         },
                         SPEED: {
@@ -666,6 +666,10 @@ class Scratch3SpikeBlocks {
                 port: {
                     acceptReporters: true,
                     items: SpikePorts
+                },
+                multiple_port: {
+                    acceptReporters: true,
+                    items: ['A', 'B', 'C', 'D', 'E', 'F', 'A+B', 'C+D', 'E+F', 'A+B+C+D+E+F']
                 },
                 coordinate: {
                     acceptReporters: true,
