@@ -322,14 +322,14 @@ class Spike {
                 if (json.hasOwnProperty('i') || json.m !== 0) {
                     console.log('< ' + jsonText);
                 }
-                this.parseResponse(json);
+                this._parseResponse(json);
             });
         } catch (error) {
             console.log(text);
         }
     }
 
-    parseResponse (response) {
+    _parseResponse (response) {
         if (response.hasOwnProperty('m')) {
             switch (response.m) {
             case 0:
