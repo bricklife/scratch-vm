@@ -717,13 +717,26 @@ class Scratch3SpikeBlocks {
                     acceptReporters: true,
                     items: ['A', 'B', 'C', 'D', 'E', 'F', 'A+B', 'C+D', 'E+F', 'A+B+C+D+E+F']
                 },
+                position_direction: {
+                    acceptReporters: false,
+                    items: [
+                        {
+                            text: 'shortest path',
+                            value: 'shortest'
+                        },
+                        {
+                            text: 'clockwise',
+                            value: 'clockwise'
+                        },
+                        {
+                            text: 'counterclockwise',
+                            value: 'counterclockwise'
+                        }
+                    ]
+                },
                 coordinate: {
                     acceptReporters: true,
                     items: ['1', '2', '3', '4', '5']
-                },
-                axis: {
-                    acceptReporters: false,
-                    items: ['pitch', 'roll', 'yaw']
                 },
                 center_button_colors: {
                     acceptReporters: true,
@@ -762,6 +775,10 @@ class Scratch3SpikeBlocks {
                         }
                     ]
                 },
+                axis: {
+                    acceptReporters: false,
+                    items: ['pitch', 'roll', 'yaw']
+                },
                 direction: {
                     acceptReporters: false,
                     items: [
@@ -772,23 +789,6 @@ class Scratch3SpikeBlocks {
                         {
                             text: 'counterclockwise',
                             value: -1
-                        }
-                    ]
-                },
-                position_direction: {
-                    acceptReporters: false,
-                    items: [
-                        {
-                            text: 'shortest path',
-                            value: 'shortest'
-                        },
-                        {
-                            text: 'clockwise',
-                            value: 'clockwise'
-                        },
-                        {
-                            text: 'counterclockwise',
-                            value: 'counterclockwise'
                         }
                     ]
                 }
