@@ -437,6 +437,36 @@ class Scratch3SpikeBlocks {
             showStatusButton: true,
             blocks: [
                 {
+                    opcode: 'motorRunFor',
+                    text: formatMessage({
+                        id: 'spike.motorRunFor',
+                        default: '[PORT] run [DIRECTION] for [VALUE] [UNIT]',
+                        description: 'NEEDS DESCRIPTION'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        PORT: {
+                            type: ArgumentType.STRING,
+                            menu: 'multiple_port',
+                            defaultValue: 'A'
+                        },
+                        DIRECTION: {
+                            type: ArgumentType.NUMBER,
+                            menu: 'direction',
+                            defaultValue: 1
+                        },
+                        VALUE: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 1
+                        },
+                        UNIT: {
+                            type: ArgumentType.STRING,
+                            menu: 'motor_unit',
+                            defaultValue: 'rotations'
+                        }
+                    }
+                },
+                {
                     opcode: 'motorGoDirectionToPosition',
                     text: formatMessage({
                         id: 'spike.motorGoDirectionToPosition',
@@ -717,6 +747,10 @@ class Scratch3SpikeBlocks {
                     acceptReporters: true,
                     items: ['A', 'B', 'C', 'D', 'E', 'F', 'A+B', 'C+D', 'E+F', 'A+B+C+D+E+F']
                 },
+                motor_unit: {
+                    acceptReporters: false,
+                    items: ['rotations', 'degrees', 'seconds']
+                },
                 position_direction: {
                     acceptReporters: false,
                     items: [
@@ -794,6 +828,58 @@ class Scratch3SpikeBlocks {
                 }
             }
         };
+    }
+
+    motorRunFor (args) {
+        const direction = args.DIRECTION;
+        const value = Cast.toNumber(args.VALUE);
+        const unit = args.UNIT;
+
+        const ports = this._validatePorts(Cast.toString(args.PORT));
+
+        switch (unit) {
+        case 'rotations':
+            return this._motorRunForDegrees(ports, direction, value * 360);
+            break;
+        case 'degrees':
+            return this._motorRunForDegrees(ports, direction, value);
+            break;
+        case 'seconds':
+            return this._motorRunTimed(ports, direction, value);
+            break;
+        default:
+            return Promise.resolve();
+        }
+    }
+
+    _motorRunForDegrees (ports, direction, degrees) {
+        const promises = ports.map(port => {
+            const setting = this._peripheral.motorSettings[port];
+            return this._peripheral.sendCommand('scratch.motor_run_for_degrees', {
+                port: port,
+                speed: setting.speed * direction,
+                degrees: Math.floor(degrees),
+                stop: setting.stopMode,
+                stall: setting.stallDetection
+            });
+        });
+
+        return Promise.all(promises).then(() => {});
+    }
+
+    _motorRunTimed (ports, direction, seconds) {
+        const promises = ports.map(port => {
+            const setting = this._peripheral.motorSettings[port];
+            return this._peripheral.sendCommand('scratch.motor_run_timed', {
+                port: port,
+                speed: setting.speed * direction,
+                time: Math.floor(seconds * 1000),
+                stop: setting.stopMode,
+                stall: setting.stallDetection
+            });
+        });
+
+        return Promise.all(promises).then(() => {});
     }
 
     motorGoDirectionToPosition (args) {
